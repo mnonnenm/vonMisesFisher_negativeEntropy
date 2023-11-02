@@ -1,0 +1,5 @@
+setup.py
+vMFne.egg-info/PKG-INFO
+vMFne.egg-info/SOURCES.txt
+vMFne.egg-info/dependency_links.txt
+vMFne.egg-info/top_level.txt

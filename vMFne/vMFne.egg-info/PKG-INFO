@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: vMFne
+Version: 0.0.1
+Summary: nMFne
+Author: Marcel Nonnenmacher
+Author-email: <marcel.nonnenm@gmail.com>
+Keywords: python
+
+von Mises-Fisher negative entropy

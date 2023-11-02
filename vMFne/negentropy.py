@@ -10,14 +10,19 @@ def vMF_ODE_second_order(t, x, D=2):
 
 def solve_Ψ_dΨ(μ_norm, D=2, y0=[0.0, 1e-8], rtol=1e-12, atol=1e-12):
 
+    assert np.all(μ_norm < 1.0)
+
     def f(t, x):
         return vMF_ODE_second_order(t,x,D=D)
+
     if np.ndim(μ_norm) > 0:
-        μ_norm = np.sort(μ_norm)
-        μ_final = μ_norm[-1]
-        out = integrate.solve_ivp(f, t_span=[0, μ_final], t_eval=μ_norm,
+        idx = np.argsort(μ_norm)  # tbd: catch repeats in norm,
+        μ_norm = (1.*μ_norm[idx]) #      solve_ivp doesn't like those
+        Ψ, dΨ = np.empty_like(μ_norm), np.empty_like(μ_norm)
+        out = integrate.solve_ivp(f, t_span=[0, μ_norm[-1]], t_eval=μ_norm,
                                   y0=y0, rtol=rtol, atol=atol)
-        Ψ, dΨ = out.y[0], out.y[1]
+        Ψ[idx] = out.y[0]
+        dΨ[idx] = out.y[1]
     else:
         out = integrate.solve_ivp(f, t_span=[0, μ_norm],
                                   y0=y0, rtol=rtol, atol=atol)
@@ -27,15 +32,18 @@ def solve_Ψ_dΨ(μ_norm, D=2, y0=[0.0, 1e-8], rtol=1e-12, atol=1e-12):
 
 def solve_dΨ(μ_norm, D=2, y0=[1e-8], rtol=1e-12, atol=1e-12):
 
+    assert np.all(μ_norm < 1.0)
+
     def f(t, x):
         return vMF_ODE_first_order(t,x,D=D)
 
     if np.ndim(μ_norm) > 0:
-        μ_norm = np.sort(μ_norm)
-        μ_final = μ_norm[-1]
-        out = integrate.solve_ivp(f, t_span=[0, μ_final], t_eval=μ_norm,
+        idx = np.argsort(μ_norm)  # tbd: catch repeats in norm, 
+        μ_norm = (1.*μ_norm[idx]) #      solve_ivp doesn't like those
+        dΨ = np.empty_like(μ_norm)
+        out = integrate.solve_ivp(f, t_span=[0, μ_norm[-1]], t_eval=μ_norm,
                                   y0=y0, rtol=rtol, atol=atol)
-        dΨ = out.y[0]
+        dΨ[idx] = out.y[0]
     else:
         out = integrate.solve_ivp(f, t_span=[0, μ_norm],
                                   y0=y0, rtol=rtol, atol=atol)
@@ -49,21 +57,24 @@ def comp_norm(μ, D=2):
     assert μ.ndim == 2
     return np.sqrt((μ**2).sum(axis=-1))
 
-def Ψ(μ, D=2):
-    μ_norm = comp_norm(μ, D=2)
-    Ψ, _ = solve_Ψ_dΨ(μ_norm, D)
-    return Ψ
+def Ψ(μ, D=2, return_grad=False):
+    μ_norm = comp_norm(μ, D=D)
+    Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D)
+    if return_grad:
+        return Ψ, _gradΨ(dΨ, μ, μ_norm, D=D)
+    else:
+        return Ψ
 
 def gradΨ(μ, D=2):
-    μ_norm = comp_norm(μ, D=2)
+    μ_norm = comp_norm(μ, D=D)
     dΨ =  solve_dΨ(μ_norm, D)
     return  _gradΨ(dΨ, μ, μ_norm, D)
 
 def _gradΨ(dΨ, μ, μ_norm, D=2):
-    return μ * (dΨ / μ_norm).reshape(*μ_norm.shape, 1)
+    return μ * (dΨ / μ_norm).reshape(*μ.shape[:-1], 1)
 
 def hessΨ(μ, D=2):
-    μ_norm = comp_norm(μ, D=2)
+    μ_norm = comp_norm(μ, D=D)
     dΨ =  solve_dΨ(μ_norm, D)
     ddΨ = vMF_ODE_first_order(μ_norm, dΨ, D)
     return _hessΨ(ddΨ, dΨ, μ, μ_norm, D)
@@ -74,3 +85,18 @@ def _hessΨ(ddΨ, dΨ, μ, μ_norm, D=2):
     I_D = np.eye(D).reshape(out_shape)
     hess = (dΨ/μ_norm).reshape(-1,1,1) * I_D + (ddΨ/μ_norm**2 - dΨ/μ_norm**3).reshape(-1,1,1) * μμT
     return hess
+
+def DBregΨ(x,μ,D=2,treat_x_constant=False):
+    # Bregman divergence D_Ψ(x||μ) for vMF distribution on S^(D-1).
+    # Note that for either ||x||=1 or ||μ||=1, it is D_Ψ(x||μ) = Inf unless x=μ,
+    # so for x on S^(D-1), consider using treat_x_constant=True !
+    Ψμ, dΨdμ = Ψ(μ, D=D, return_grad=True)
+    if treat_x_constant:
+        return (dΨdμ*(x - μ)).sum(axis=-1) - Ψμ
+    else:
+        return (dΨdμ*(x - μ)).sum(axis=-1) - Ψμ + Ψ(x, D=D)
+
+def vMF_loglikelihood_Ψ(x,μ,D=2):
+    # log p(x|μ) = - D_\Psi(x||\mu) + \Psi(x) + some constant in dimensionality D.
+    return - DBregΨ(x,μ,D=D,treat_x_constant=True)
+
