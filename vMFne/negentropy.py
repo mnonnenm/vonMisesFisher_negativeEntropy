@@ -8,7 +8,7 @@ def vMF_ODE_second_order(t, x, D=2):
     u, v = x
     return [v, v / ((1 - t**2) * v + (1-D) * t )]
 
-def solve_Ψ_dΨ(μ_norm, D=2, y0=[0.0, 1e-8], rtol=1e-12, atol=1e-12):
+def solve_Ψ_dΨ(μ_norm, D=2, y0=[0.0, 1e-6], rtol=1e-12, atol=1e-12):
 
     assert np.all(μ_norm < 1.0)
 
@@ -16,21 +16,24 @@ def solve_Ψ_dΨ(μ_norm, D=2, y0=[0.0, 1e-8], rtol=1e-12, atol=1e-12):
         return vMF_ODE_second_order(t,x,D=D)
 
     if np.ndim(μ_norm) > 0:
-        idx = np.argsort(μ_norm)  # tbd: catch repeats in norm,
-        μ_norm = (1.*μ_norm[idx]) #      solve_ivp doesn't like those
+        #idx = np.argsort(μ_norm)  # tbd: catch repeats in norm,
+        #μ_norm = (1.*μ_norm[idx]) #      solve_ivp doesn't like those
+        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
         Ψ, dΨ = np.empty_like(μ_norm), np.empty_like(μ_norm)
         out = integrate.solve_ivp(f, t_span=[0, μ_norm[-1]], t_eval=μ_norm,
                                   y0=y0, rtol=rtol, atol=atol)
-        Ψ[idx] = out.y[0]
-        dΨ[idx] = out.y[1]
+        #Ψ[idx] = out.y[0]  # vectors
+        #dΨ[idx] = out.y[1] #
+        Ψ = out.y[0][idx_inv]  # vectors
+        dΨ = out.y[1][idx_inv] #        
     else:
         out = integrate.solve_ivp(f, t_span=[0, μ_norm],
                                   y0=y0, rtol=rtol, atol=atol)
-        Ψ, dΨ = out.y[0][-1], out.y[1][-1]
+        Ψ, dΨ = out.y[0][-1], out.y[1][-1] # scalars
         
     return Ψ, dΨ
 
-def solve_dΨ(μ_norm, D=2, y0=[1e-8], rtol=1e-12, atol=1e-12):
+def solve_dΨ(μ_norm, D=2, y0=[1e-6], rtol=1e-12, atol=1e-12):
 
     assert np.all(μ_norm < 1.0)
 
@@ -43,11 +46,11 @@ def solve_dΨ(μ_norm, D=2, y0=[1e-8], rtol=1e-12, atol=1e-12):
         dΨ = np.empty_like(μ_norm)
         out = integrate.solve_ivp(f, t_span=[0, μ_norm[-1]], t_eval=μ_norm,
                                   y0=y0, rtol=rtol, atol=atol)
-        dΨ[idx] = out.y[0]
+        dΨ[idx] = out.y[0] # vector
     else:
         out = integrate.solve_ivp(f, t_span=[0, μ_norm],
                                   y0=y0, rtol=rtol, atol=atol)
-        dΨ =  out.y[0][-1]
+        dΨ =  out.y[0][-1] # scalar
 
     return dΨ
 
@@ -59,7 +62,7 @@ def comp_norm(μ, D=2):
 
 def Ψ(μ, D=2, return_grad=False):
     μ_norm = comp_norm(μ, D=D)
-    Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D)
+    Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D=D)
     if return_grad:
         return Ψ, _gradΨ(dΨ, μ, μ_norm, D=D)
     else:
@@ -67,7 +70,7 @@ def Ψ(μ, D=2, return_grad=False):
 
 def gradΨ(μ, D=2):
     μ_norm = comp_norm(μ, D=D)
-    dΨ =  solve_dΨ(μ_norm, D)
+    dΨ =  solve_dΨ(μ_norm, D=D)
     return  _gradΨ(dΨ, μ, μ_norm, D)
 
 def _gradΨ(dΨ, μ, μ_norm, D=2):
@@ -90,13 +93,18 @@ def DBregΨ(x,μ,D=2,treat_x_constant=False):
     # Bregman divergence D_Ψ(x||μ) for vMF distribution on S^(D-1).
     # Note that for either ||x||=1 or ||μ||=1, it is D_Ψ(x||μ) = Inf unless x=μ,
     # so for x on S^(D-1), consider using treat_x_constant=True !
+    # x : D-dim. vector or N-D matrix
+    # μ : D-dim. vector or K-D matrix
     Ψμ, dΨdμ = Ψ(μ, D=D, return_grad=True)
+    dΨdμ_x_μ = ((dΨdμ*μ).sum(axis=-1) - Ψμ).reshape(1,-1) - x.dot(dΨdμ.T) # N x K
     if treat_x_constant:
-        return (dΨdμ*(x - μ)).sum(axis=-1) - Ψμ
+        return dΨdμ_x_μ
     else:
-        return (dΨdμ*(x - μ)).sum(axis=-1) - Ψμ + Ψ(x, D=D)
+        return dΨdμ_x_μ + Ψ(x, D=D)
 
 def vMF_loglikelihood_Ψ(x,μ,D=2):
     # log p(x|μ) = - D_\Psi(x||\mu) + \Psi(x) + some constant in dimensionality D.
-    return - DBregΨ(x,μ,D=D,treat_x_constant=True)
+    # x : D-dim. vector or N-D matrix
+    # μ : D-dim. vector or K-D matrix
+    return - DBregΨ(x,μ,D=D,treat_x_constant=True) # N x K
 
