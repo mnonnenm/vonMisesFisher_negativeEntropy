@@ -1,12 +1,19 @@
 import numpy as np
-from vMFne.negentropy import vMF_loglikelihood_Ψ
+from vMFne.negentropy import DBregΨ
 
+def vMF_loglikelihood_Ψ(x,μ,D=2):
+    # log p(x|μ) = - D_\Psi(x||\mu) + \Psi(x) + some constant in dimensionality D.
+    # x : D-dim. vector or N-D matrix
+    # μ : D-dim. vector or K-D matrix
+    return - DBregΨ(x,μ,D=D,treat_x_constant=True) # N x K
 
-def posterior_marginal_vMF_mixture(X,w,μs):
+def posterior_marginal_vMF_mixture_Ψ(X,w,μs):
+
     N,K,D = X.shape[0], μs.shape[0], X.shape[1]
     LL_k = vMF_loglikelihood_Ψ(X,μs,D)
     pxh = w.reshape(1,K) * np.exp(LL_k)
     px = pxh.sum(axis=1).reshape(N,1)
+
     return pxh / px, px # N-by-K
 
 def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, verbose=False):
@@ -28,14 +35,14 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, ve
     μs = μs_init 
 
     if verbose:
-        print(r'$w_0$:', w)
-        print('r$||μs_0||:$', np.linalg.norm(μs,axis=-1))
+        print('initial w:', w)
+        print('inital ||μs||:', np.linalg.norm(μs,axis=-1))
 
     LL = np.zeros(max_iter) # likelihood (up to multiplicative constant)
     for ii in range(max_iter):
 
         # E-step: - compute cluster responsibilities
-        post, px = posterior_marginal_vMF_mixture(X=X,w=w,μs=μs)
+        post, px = posterior_marginal_vMF_mixture_Ψ(X=X,w=w,μs=μs)
         LL[ii] = np.log(px).sum()
 
         # M-step:
@@ -43,6 +50,7 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, ve
         μs = post.T.dot(X) / post.sum(axis=0).reshape(K,1)
 
         if verbose:
+            print(' #' + str(ii+1) + '/' + str(max_iter))
             print('w:', w)
             print('||μs||:', np.linalg.norm(μs,axis=-1))
 

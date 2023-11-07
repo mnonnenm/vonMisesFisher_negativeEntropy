@@ -2,10 +2,12 @@ from scipy import integrate
 import numpy as np
 
 def vMF_ODE_first_order(t, x, D=2):
+
     return x / ((1 - t**2) * x + (1-D) * t )
 
 def vMF_ODE_second_order(t, x, D=2):
     u, v = x
+
     return [v, v / ((1 - t**2) * v + (1-D) * t )]
 
 def solve_Ψ_dΨ(μ_norm, D=2, y0=[0.0, 1e-6], rtol=1e-12, atol=1e-12):
@@ -58,11 +60,13 @@ def comp_norm(μ, D=2):
     assert μ.shape[-1] == D
     μ = μ.reshape(1,D) if μ.ndim == 1 else μ
     assert μ.ndim == 2
+
     return np.sqrt((μ**2).sum(axis=-1))
 
 def Ψ(μ, D=2, return_grad=False):
     μ_norm = comp_norm(μ, D=D)
     Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D=D)
+
     if return_grad:
         return Ψ, _gradΨ(dΨ, μ, μ_norm, D=D)
     else:
@@ -71,6 +75,7 @@ def Ψ(μ, D=2, return_grad=False):
 def gradΨ(μ, D=2):
     μ_norm = comp_norm(μ, D=D)
     dΨ =  solve_dΨ(μ_norm, D=D)
+
     return  _gradΨ(dΨ, μ, μ_norm, D)
 
 def _gradΨ(dΨ, μ, μ_norm, D=2):
@@ -80,6 +85,7 @@ def hessΨ(μ, D=2):
     μ_norm = comp_norm(μ, D=D)
     dΨ =  solve_dΨ(μ_norm, D)
     ddΨ = vMF_ODE_first_order(μ_norm, dΨ, D)
+
     return _hessΨ(ddΨ, dΨ, μ, μ_norm, D)
 
 def _hessΨ(ddΨ, dΨ, μ, μ_norm, D=2):
@@ -87,6 +93,7 @@ def _hessΨ(ddΨ, dΨ, μ, μ_norm, D=2):
     μμT = np.matmul(μ.reshape(*μ.shape,1), μ.reshape(*μ.shape[:-1],1,μ.shape[-1]))
     I_D = np.eye(D).reshape(out_shape)
     hess = (dΨ/μ_norm).reshape(-1,1,1) * I_D + (ddΨ/μ_norm**2 - dΨ/μ_norm**3).reshape(-1,1,1) * μμT
+
     return hess
 
 def DBregΨ(x,μ,D=2,treat_x_constant=False):
@@ -101,10 +108,3 @@ def DBregΨ(x,μ,D=2,treat_x_constant=False):
         return dΨdμ_x_μ
     else:
         return dΨdμ_x_μ + Ψ(x, D=D)
-
-def vMF_loglikelihood_Ψ(x,μ,D=2):
-    # log p(x|μ) = - D_\Psi(x||\mu) + \Psi(x) + some constant in dimensionality D.
-    # x : D-dim. vector or N-D matrix
-    # μ : D-dim. vector or K-D matrix
-    return - DBregΨ(x,μ,D=D,treat_x_constant=True) # N x K
-
