@@ -1,7 +1,12 @@
-import scipy.stats
-import scipy.special
 import numpy as np
 from vMFne.negentropy import gradΨ
+import mpmath
+
+def log_besseli(v,z):
+    return np.float32(mpmath.log(mpmath.besseli(v, z)))
+
+def ratio_besseli(v,z):
+    return np.float32(mpmath.besseli(v, z) / mpmath.besseli(v-1, z))
 
 def vMF_loglikelihood_Φ(X,ηs):
 
@@ -9,25 +14,9 @@ def vMF_loglikelihood_Φ(X,ηs):
     assert ηs.ndim == 2
     K,D = ηs.shape 
     κs = np.linalg.norm(ηs,axis=-1)
-    mu = ηs / κs.reshape(*κs.shape,1)
-    LL = np.zeros((*X.shape[:-1], K))
-    for i in range(len(κs)):
-        κ = κs[i]
-        LL[...,i] = scipy.stats.vonmises_fisher.logpdf(X,mu=mu[i],kappa=κs[i]) # nope.
-
+    log_Id = np.array([log_besseli(D/2.-1, κ) for κ in κs])
+    LL = X.dot(ηs.T) - D/2. * np.log(2*np.pi) + ((D/2. - 1.) * np.log(κs) - log_Id).reshape(1,K)
     return LL # N-by-K
-
-def vMF_entropy_Φ(ηs):
-
-    ηs = np.atleast_2d(ηs)
-    K,D = ηs.shape
-    κ = np.linalg.norm(ηs,axis=-1)    
-    H = - (D/2.-1.) * np.log(κ) + D/2. * np.log(2.0*np.pi) 
-    IeD2 = scipy.special.ive(D/2.,κ)
-    IeD2_1 = scipy.special.ive(D/2.-1.,κ)
-    H = H - np.log(IeD2_1) - κ * (IeD2/IeD2_1 - 1.)
-    
-    return H
 
 def posterior_marginal_vMF_mixture_Φ(X,w,ηs):
 
@@ -87,3 +76,15 @@ def moVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False):
             print('kappa:', np.linalg.norm(ηs,axis=-1))
 
     return ηs, w, LL[:ii+1]
+
+def vMF_entropy_Φ(ηs):
+
+    ηs = np.atleast_2d(ηs)
+    K,D = ηs.shape
+    κs = np.linalg.norm(ηs,axis=-1)    
+    H = - (D/2.-1.) * np.log(κs) + D/2. * np.log(2.0*np.pi) 
+    log_I = np.array([log_besseli(D/2.-1, κ) for κ in κs])
+    ratio_I = np.array([ratio_besseli(D/2, κ) for κ in κs])
+    H = H + log_I - κs * ratio_I
+    
+    return H
