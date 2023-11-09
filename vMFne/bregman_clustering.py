@@ -1,16 +1,16 @@
 import numpy as np
 from vMFne.negentropy import DBregΨ
 
-def vMF_loglikelihood_Ψ(x,μ,D=2):
+def vMF_loglikelihood_Ψ(x,μ,D=2,Ψ0=None):
     # log p(x|μ) = - D_\Psi(x||\mu) + \Psi(x) + some constant in dimensionality D.
     # x : D-dim. vector or N-D matrix
     # μ : D-dim. vector or K-D matrix
-    return - DBregΨ(x,μ,D=D,treat_x_constant=True) # N x K
+    return - DBregΨ(x,μ,D=D,treat_x_constant=True,Ψ0=Ψ0) # N x K
 
-def posterior_marginal_vMF_mixture_Ψ(X,w,μs):
+def posterior_marginal_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
 
     N,K,D = X.shape[0], μs.shape[0], X.shape[1]
-    LL_k = vMF_loglikelihood_Ψ(X,μs,D)
+    LL_k = vMF_loglikelihood_Ψ(X,μs,D,Ψ0=Ψ0)
     pxh = w.reshape(1,K) * np.exp(LL_k)
     px = pxh.sum(axis=1).reshape(N,1)
 
@@ -42,7 +42,7 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, ve
     for ii in range(max_iter):
 
         # E-step: - compute cluster responsibilities
-        post, px = posterior_marginal_vMF_mixture_Ψ(X=X,w=w,μs=μs)
+        post, px = posterior_marginal_vMF_mixture_Ψ(X=X,w=w,μs=μs,Ψ0=0.)
         LL[ii] = np.log(px).sum()
 
         # M-step:

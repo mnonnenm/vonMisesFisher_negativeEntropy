@@ -8,14 +8,27 @@ def log_besseli(v,z):
 def ratio_besseli(v,z):
     return np.float32(mpmath.besseli(v, z) / mpmath.besseli(v-1, z))
 
+def Φ(κs, D):
+    log_Id = np.array([log_besseli(D/2.-1, κ) for κ in κs])
+    return log_Id - (D/2. - 1.) * np.log(κs)
+
+def gradΦ(ηs):
+    ηs = np.atleast_2d(ηs)
+    K,D = ηs.shape
+    κs = np.linalg.norm(ηs,axis=-1)
+    μs = ηs * (np.array([ratio_besseli(D/2,κ) for κ in κs]) / κs).reshape(-1,1)
+    return μs
+
+def logχ(D) :
+    return - D/2. * np.log(2*np.pi)
+
 def vMF_loglikelihood_Φ(X,ηs):
 
     ηs = np.atleast_2d(ηs)
     assert ηs.ndim == 2
     K,D = ηs.shape 
     κs = np.linalg.norm(ηs,axis=-1)
-    log_Id = np.array([log_besseli(D/2.-1, κ) for κ in κs])
-    LL = X.dot(ηs.T) - D/2. * np.log(2*np.pi) + ((D/2. - 1.) * np.log(κs) - log_Id).reshape(1,K)
+    LL = X.dot(ηs.T) + logχ(D) - Φ(κs, D).reshape(1,K)
     return LL # N-by-K
 
 def posterior_marginal_vMF_mixture_Φ(X,w,ηs):
@@ -78,13 +91,51 @@ def moVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False):
     return ηs, w, LL[:ii+1]
 
 def vMF_entropy_Φ(ηs):
-
     ηs = np.atleast_2d(ηs)
     K,D = ηs.shape
     κs = np.linalg.norm(ηs,axis=-1)    
-    H = - (D/2.-1.) * np.log(κs) + D/2. * np.log(2.0*np.pi) 
-    log_I = np.array([log_besseli(D/2.-1, κ) for κ in κs])
-    ratio_I = np.array([ratio_besseli(D/2, κ) for κ in κs])
-    H = H + log_I - κs * ratio_I
-    
+    H = Φ(κs, D) - logχ(D) - κs * A(κs,D)
+
     return H
+
+def A(κs,D):
+
+    return np.array([ratio_besseli(D/2,κ) for κ in κs])
+
+def dA(κs,D):
+
+    return 1- A(κs,D)**2 - (D-1) * A(κs,D) / κs
+
+def banerjee_44(rbar,D):
+    """ Approximately solve for Ψ'(rbar) = κ in notation rbar = ||μ||, κ = ||η||. 
+    Taken from eq. (4.4) of
+    Banerjee, Arindam, et al. 
+    "Clustering on the Unit Hypersphere using von Mises-Fisher Distributions." 
+    Journal of Machine Learning Research 6.9 (2005).
+    """
+    return rbar * (D- rbar**2) / (1-rbar**3)
+
+def newtonraphson(κs_init,D,rbar,max_iter=100, atol=1e-12):
+    κs = κs_init
+    diffs = np.zeros((max_iter+1, len(κs)))
+    f = (A(κs,D) - rbar)
+    diffs[0] = f
+    df = dA(κs,D)
+    for i in range(max_iter):
+        κs = κs - f/df
+        f = (A(κs,D) - rbar)
+        df = dA(κs,D)
+        diffs[i+1] = f
+        if np.all(np.abs(diffs) < atol):
+            diffs = diffs[:i+2]
+            break
+
+    return κs, diffs
+
+def invert_gradΦ(μs_norm,D,max_iter=10, atol=1e-12):
+    rbar = μs_norm
+    κs_est_44 = banerjee_44(rbar,D)
+    κs_est, diffs = newtonraphson(κs_init=κs_est_44, D=D, rbar=rbar, 
+                                  max_iter=max_iter, atol=atol)
+
+    return κs_est, diffs

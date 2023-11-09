@@ -1,5 +1,7 @@
 from scipy import integrate
+from scipy import special as spspecial
 import numpy as np
+
 
 def vMF_ODE_first_order(t, x, D=2):
 
@@ -10,9 +12,11 @@ def vMF_ODE_second_order(t, x, D=2):
 
     return [v, v / ((1 - t**2) * v + (1-D) * t )]
 
-def solve_Ψ_dΨ(μ_norm, D=2, y0=[0.0, 1e-6], rtol=1e-12, atol=1e-12):
+def solve_Ψ_dΨ(μ_norm, D=2, y0=[None, 1e-6], rtol=1e-12, atol=1e-12):
 
     assert np.all(μ_norm < 1.0)
+    if y0[0] is None:
+        y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
 
     def f(t, x):
         return vMF_ODE_second_order(t,x,D=D)
@@ -63,9 +67,9 @@ def comp_norm(μ, D=2):
 
     return np.sqrt((μ**2).sum(axis=-1))
 
-def Ψ(μ, D=2, return_grad=False):
+def Ψ(μ, D=2, Ψ0=None, return_grad=False):
     μ_norm = comp_norm(μ, D=D)
-    Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D=D)
+    Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D=D, y0=[Ψ0, 1e-6])
 
     if return_grad:
         return Ψ, _gradΨ(dΨ, μ, μ_norm, D=D)
@@ -96,15 +100,15 @@ def _hessΨ(ddΨ, dΨ, μ, μ_norm, D=2):
 
     return hess
 
-def DBregΨ(x,μ,D=2,treat_x_constant=False):
+def DBregΨ(x,μ,D=2,treat_x_constant=False, Ψ0=None):
     # Bregman divergence D_Ψ(x||μ) for vMF distribution on S^(D-1).
     # Note that for either ||x||=1 or ||μ||=1, it is D_Ψ(x||μ) = Inf unless x=μ,
     # so for x on S^(D-1), consider using treat_x_constant=True !
     # x : D-dim. vector or N-D matrix
     # μ : D-dim. vector or K-D matrix
-    Ψμ, dΨdμ = Ψ(μ, D=D, return_grad=True)
+    Ψμ, dΨdμ = Ψ(μ, D=D, return_grad=True, Ψ0=Ψ0)
     dΨdμ_x_μ = ((dΨdμ*μ).sum(axis=-1) - Ψμ).reshape(1,-1) - x.dot(dΨdμ.T) # N x K
     if treat_x_constant:
         return dΨdμ_x_μ
     else:
-        return dΨdμ_x_μ + Ψ(x, D=D)
+        return dΨdμ_x_μ + Ψ(x, D=D, Ψ0=Ψ0)
