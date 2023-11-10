@@ -69,25 +69,29 @@ def comp_norm(μ, D=2):
 
 def Ψ(μ, D=2, Ψ0=None, return_grad=False):
     μ_norm = comp_norm(μ, D=D)
-    Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D=D, y0=[Ψ0, 1e-6])
+    y0 = [Ψ0, 1e-6] if np.ndim(Ψ0)==0 else Ψ0 
+    assert len(y0) == 2
+    Ψ, dΨ = solve_Ψ_dΨ(μ_norm, D=D, y0=y0)
 
     if return_grad:
         return Ψ, _gradΨ(dΨ, μ, μ_norm, D=D)
     else:
         return Ψ
 
-def gradΨ(μ, D=2):
+def gradΨ(μ, D=2, Ψ0=None):
     μ_norm = comp_norm(μ, D=D)
-    dΨ =  solve_dΨ(μ_norm, D=D)
+    y0 = [1e-6] if Ψ0 is None else [Ψ0]
+    dΨ =  solve_dΨ(μ_norm, D=D, y0=y0)
 
     return  _gradΨ(dΨ, μ, μ_norm, D)
 
 def _gradΨ(dΨ, μ, μ_norm, D=2):
     return μ * (dΨ / μ_norm).reshape(*μ.shape[:-1], 1)
 
-def hessΨ(μ, D=2):
+def hessΨ(μ, D=2, Ψ0=None):
     μ_norm = comp_norm(μ, D=D)
-    dΨ =  solve_dΨ(μ_norm, D)
+    y0 = [1e-6] if Ψ0 is None else [Ψ0]
+    dΨ =  solve_dΨ(μ_norm, D, y0=y0)
     ddΨ = vMF_ODE_first_order(μ_norm, dΨ, D)
 
     return _hessΨ(ddΨ, dΨ, μ, μ_norm, D)
