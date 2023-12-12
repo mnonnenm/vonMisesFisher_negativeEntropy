@@ -1,15 +1,16 @@
 import numpy as np
 from vMFne.negentropy import gradΨ
 from vMFne.logpartition import vMF_loglikelihood_Φ
+import scipy.special
 
 def posterior_marginal_vMF_mixture_Φ(X,w,ηs):
 
     N,K,D = X.shape[0], ηs.shape[0], X.shape[1]
     LL_k = vMF_loglikelihood_Φ(X,ηs,incl_const=False)
-    pxh = w.reshape(1,K) * np.exp(LL_k)
-    px = pxh.sum(axis=1).reshape(N,1)
+    logpxh = np.log(w.reshape(1,K)) + LL_k
+    logpx = scipy.special.logsumexp(logpxh,axis=1).reshape(N,1)
 
-    return pxh / px, px # N-by-K
+    return np.exp(logpxh - logpx), logpx
 
 def moVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False):
 
