@@ -1,12 +1,17 @@
 import numpy as np
 import mpmath
-from vMFne.negentropy import gradΨ
+from vMFne.negentropy import gradΨ, banerjee_44
 
 def log_besseli(v,z):
     return np.float32(mpmath.log(mpmath.besseli(v, z)))
 
 def ratio_besseli(v,z):
-    return np.float32(mpmath.besseli(v, z) / mpmath.besseli(v-1, z))
+    try:
+        return np.float32(mpmath.besseli(v, z) / mpmath.besseli(v-1, z))
+    except:
+        with mpmath.extraprec(n=1000):
+            r = np.float32(mpmath.besseli(v, z) / mpmath.besseli(v-1, z))
+    return r
 
 def Φ(κs, D):
     log_Id = np.array([log_besseli(D/2.-1, κ) for κ in κs])
@@ -50,29 +55,21 @@ def dA(κs,D):
 
     return 1- A(κs,D)**2 - (D-1) * A(κs,D) / κs
 
-def banerjee_44(rbar,D):
-    """ Approximately solve for Ψ'(rbar) = κ in notation rbar = ||μ||, κ = ||η||. 
-    Taken from eq. (4.4) of
-    Banerjee, Arindam, et al. 
-    "Clustering on the Unit Hypersphere using von Mises-Fisher Distributions." 
-    Journal of Machine Learning Research 6.9 (2005).
-    """
-    return rbar * (D- rbar**2) / (1-rbar**3)
-
 def newtonraphson(κs_init,D,rbar,max_iter=100, atol=1e-12):
     κs = κs_init
     diffs = np.zeros((max_iter+1, len(κs)))
-    f = (A(κs,D) - rbar)
-    diffs[0] = f
-    df = dA(κs,D)
-    for i in range(max_iter):
-        κs = κs - f/df
+    if max_iter > 0:
         f = (A(κs,D) - rbar)
+        diffs[0] = f
         df = dA(κs,D)
-        diffs[i+1] = f
-        if np.all(np.abs(diffs) < atol):
-            diffs = diffs[:i+2]
-            break
+        for i in range(max_iter):
+            κs = κs - f/df
+            f = (A(κs,D) - rbar)
+            df = dA(κs,D)
+            diffs[i+1] = f
+            if np.all(np.abs(diffs) < atol):
+                diffs = diffs[:i+2]
+                break
 
     return κs, diffs
 
