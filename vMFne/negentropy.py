@@ -102,7 +102,7 @@ def vMF_delta_ODE_second_order(t, x, D):
     mt22 = mt2**2
 
     dx = v
-    ddx = 1./mt2 + (1-D)/mt22*((1+t2) - t/(0.5*t*(2.-t)+0.08/np.pi*np.sin(np.pi*t)**2+v)) - 1.0 + t - 0.08*np.sin(2.0*np.pi*t)
+    ddx = 1./mt2 + (1.-D)/mt22*(1.+t2 - t/(0.5*t*(2.-t)+0.08/np.pi*np.sin(np.pi*t)**2+v)) - 1. + t - 0.08*np.sin(2.*np.pi*t)
 
     return [dx, ddx]
 
@@ -111,6 +111,11 @@ def solve_delta_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-1
     assert np.all(μ_norm < 1.0)
     if y0[0] is None:
         y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
+
+    if y0[1] == 0:
+        Ψ = y0[0] * np.ones_like(μ_norm)
+        dΨ = np.zeros_like(μ_norm)
+    return Ψ, dΨ
 
     def f(t, x):
         return vMF_delta_ODE_second_order(t,x,D=D)
@@ -148,7 +153,7 @@ def comp_norm(μ, D):
 
     return np.sqrt((μ**2).sum(axis=-1))
 
-def Ψ(μ, D, Ψ0=None, t0=0., return_grad=False, solve_delta=False):
+def Ψ(μ, D, Ψ0=None, t0=0., return_grad=False, solve_delta=True):
     μ_norm = comp_norm(μ, D=D)
     y0 = [Ψ0, 1e-6] if np.ndim(Ψ0)==0 else Ψ0 
     assert len(y0) == 2
@@ -190,13 +195,13 @@ def _hessΨ(ddΨ, dΨ, μ, μ_norm, D):
 
     return hess
 
-def DBregΨ(x,μ,D,treat_x_constant=False, Ψ0=None, t0=0.):
+def DBregΨ(x, μ, D, treat_x_constant=False, Ψ0=None):
     # Bregman divergence D_Ψ(x||μ) for vMF distribution on S^(D-1).
     # Note that for either ||x||=1 or ||μ||=1, it is D_Ψ(x||μ) = Inf unless x=μ,
     # so for x on S^(D-1), consider using treat_x_constant=True !
     # x : D-dim. vector or N-D matrix
     # μ : D-dim. vector or K-D matrix
-    Ψμ, dΨdμ = Ψ(μ, D=D, return_grad=True, Ψ0=Ψ0, t0=t0)
+    Ψμ, dΨdμ = Ψ(μ, D=D, return_grad=True, Ψ0=Ψ0)
     dΨdμ_x_μ = ((dΨdμ*μ).sum(axis=-1) - Ψμ).reshape(1,-1) - x.dot(dΨdμ.T) # N x K
     if treat_x_constant:
         return dΨdμ_x_μ
