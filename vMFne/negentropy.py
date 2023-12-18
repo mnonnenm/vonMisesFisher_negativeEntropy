@@ -115,7 +115,7 @@ def solve_delta_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-1
     if y0[1] == 0:
         Ψ = y0[0] * np.ones_like(μ_norm)
         dΨ = np.zeros_like(μ_norm)
-    return Ψ, dΨ
+        return Ψ, dΨ
 
     def f(t, x):
         return vMF_delta_ODE_second_order(t,x,D=D)
