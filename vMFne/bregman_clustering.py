@@ -11,8 +11,8 @@ def vMF_loglikelihood_Ψ(x,μ,D=2,Ψ0=None):
 def posterior_marginal_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
 
     N,K,D = X.shape[0], μs.shape[0], X.shape[1]
-    LL_k = vMF_loglikelihood_Ψ(X,μs,D,Ψ0=Ψ0)
-    logpxh = np.log(w.reshape(1,K)) + LL_k
+    LL_k = vMF_loglikelihood_Ψ(X,μs,D,Ψ0=Ψ0) # N x K
+    logpxh = np.log(w.reshape(1,K)) + LL_k   # N x K
     logpx = scipy.special.logsumexp(logpxh,axis=1).reshape(N,1)
 
     return np.exp(logpxh - logpx), logpx
@@ -40,7 +40,7 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, ve
 
     if verbose:
         print('initial w:', w)
-        print('inital ||μs||:', np.linalg.norm(μs,axis=-1))
+        print('initial ||μs||:', np.linalg.norm(μs,axis=-1))
 
     LL = np.zeros(max_iter) # likelihood (up to multiplicative constant)
     for ii in range(max_iter):
@@ -81,7 +81,7 @@ def spherical_kmeans(X, K, max_iter=100, w_init=None, μs_init=None, verbose=Fal
 
     if verbose:
         print('initial w:', w)
-        print('inital ||μs||:', np.linalg.norm(μs,axis=-1))
+        print('initial ||μs||:', np.linalg.norm(μs,axis=-1))
 
     for ii in range(max_iter):
 

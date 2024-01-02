@@ -174,7 +174,7 @@ def gradΨ(μ, D, Ψ0=None, t0=0.):
     y0 = [1e-6] if Ψ0 is None else [Ψ0]
     dΨ =  solve_dΨ(μ_norm, D=D, y0=y0, t0=t0)
 
-    return  _gradΨ(dΨ, μ, μ_norm, D)
+    return _gradΨ(dΨ, μ, μ_norm, D)
 
 def _gradΨ(dΨ, μ, μ_norm, D=2):
     return μ * (dΨ / μ_norm).reshape(*μ.shape[:-1], 1)
