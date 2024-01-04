@@ -12,7 +12,7 @@ def posterior_marginal_vMF_mixture_Φ(X,w,ηs):
 
     return np.exp(logpxh - logpx), logpx
 
-def moVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False):
+def moVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False, κ_max=np.inf, tie_norms=False):
 
     N,D = X.shape
 
@@ -50,7 +50,10 @@ def moVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False):
         mu_norms = np.linalg.norm(mus,axis=1)
         rbar = mu_norms / nalphas
         mus = mus / mu_norms.reshape(-1,1)  # unit-norm 'mean parameter' vectors
-        κs = rbar * (D - rbar**2) / (1 - rbar**2)
+        κs = np.minimum(rbar * (D - rbar**2) / (1 - rbar**2), κ_max)
+        if tie_norms:
+            κs = κs.mean() * np.ones_like(κs)
+
         ηs = mus * κs.reshape(-1,1)
         #μs = mus/ post.sum(axis=0).reshape(K,1)
         #ηs = gradΨ(μs,D=D)

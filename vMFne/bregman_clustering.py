@@ -17,7 +17,8 @@ def posterior_marginal_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
 
     return np.exp(logpxh - logpx), logpx
 
-def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, verbose=False, Ψ0=[0., 1e-6]):
+def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, verbose=False, Ψ0=[0., 1e-6],
+                              tie_norms=False, μ_norm_max=0.99):
 
     N,D = X.shape
 
@@ -27,15 +28,11 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, ve
 
     # initialize clusters on means of random partitioning
     if μs_init is None:
-        #idx = np.random.permutation(N)
-        #μs_init = np.zeros((K,D))
-        #for k in range(K-1):
-        #    μs_init[k] = X[idx[k*N//K : (k+1)*N//K]].mean(axis=0)
-        #μs_init[K-1] = X[idx[(K-1)*N//K:]].mean(axis=0) # last partition can be larger
-        #μs_init = 0.9 * μs_init # pull means towards origin (make clusters broader)
-        μs_init = np.random.normal(size=(K,D))
-        μs_init = μs_init / (1e6 * np.linalg.norm(μs_init,axis=-1).reshape(-1,1))
-
+        idx = np.random.permutation(N)
+        μs_init = np.zeros((K,D))
+        for k in range(K-1):
+            μs_init[k] = X[idx[k*N//K : (k+1)*N//K]].mean(axis=0)
+        μs_init[K-1] = X[idx[(K-1)*N//K:]].mean(axis=0) # last partition can be larger
     μs = μs_init 
 
     if verbose:
@@ -52,6 +49,14 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None, ve
         # M-step:
         w = post.mean(axis=0)
         μs = post.T.dot(X) / post.sum(axis=0).reshape(K,1)
+
+        μs_norm = np.linalg.norm(μs,axis=-1)
+        if np.any(μs_norm>μ_norm_max):
+            idx = μs_norm>μ_norm_max
+            μs[idx,:] = μ_norm_max * μs[idx,:] / μs_norm[idx].reshape(-1,1)
+
+        if tie_norms:
+            μs = μs / μs_norm.reshape(-1,1) * μs_norm.mean()
 
         if verbose:
             print(' #' + str(ii+1) + '/' + str(max_iter))
