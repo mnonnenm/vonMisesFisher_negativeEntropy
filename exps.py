@@ -49,6 +49,9 @@ def load_classic3():
     X, labels = tfn(X_raw, labels, lower=8/N, upper=0.15, dtype=np.float32)
 
     N, D = X.shape
+    idx = np.random.permutation(N)
+    X, labels = X[idx], labels[idx]
+
     print('\n')
     print('selecting D=' + str(D) + ' features out of ' + str(D_raw) + ' features in full dataset.')
     print('\n')
@@ -101,6 +104,8 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
 
 
 def load_news20(only_train_data=False, news20_small=False):
+
+    np.random.seed(0)
 
     data_train = np.loadtxt('data/20news_preprocessed/train.data', dtype=int)
     data_train = scipy.sparse.coo_array((data_train[:,2], (data_train[:,0]-1, data_train[:,1]-1))).todense()
