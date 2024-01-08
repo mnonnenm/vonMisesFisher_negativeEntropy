@@ -8,7 +8,7 @@ from run_exps import run_spkmeans, run_softmovMF, run_softBregmanClustering
 from vMFne.logpartition import gradΦ
 
 
-def load_classic3():
+def load_classic3(classic300=False):
 
     np.random.seed(0)
 
@@ -48,6 +48,10 @@ def load_classic3():
     X_raw, dictionary = filter_features_against_stopwords(X_raw, dictionary)
     X, labels = tfn(X_raw, labels, lower=8/N, upper=0.15, dtype=np.float32)
 
+    if classic300: # subsample 100 documents from each class for a total of N=300
+        idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(3)])
+        X, labels = X[idx], labels[idx]
+
     N, D = X.shape
     idx = np.random.permutation(N)
     X, labels = X[idx], labels[idx]
@@ -59,11 +63,13 @@ def load_classic3():
     return X, labels, dictionary
 
 def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,6,7,8,9,10,11], 
-                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0', verbose=False):
+                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0', 
+                 classic300=False, verbose=False):
 
     
-    X, labels, dictionary = load_classic3()
+    X, labels, dictionary = load_classic3(classic300=classic300)
     N,D = X.shape
+    print('N,D', (N,D))
     μ_norm_max = np.linalg.norm(gradΦ(κ_max * np.ones(D)/np.sqrt(D)))
 
     if verbose: 
@@ -156,6 +162,7 @@ def run_all_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20
     
     X, labels, dictionary = load_news20(only_train_data=only_train_data, news20_small=news20_small)
     N,D = X.shape
+    print('N,D', (N,D))
     μ_norm_max = np.linalg.norm(gradΦ(κ_max * np.ones(D)/np.sqrt(D)))
 
     if verbose: 

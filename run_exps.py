@@ -1,6 +1,6 @@
 from vMFne.bregman_clustering import spherical_kmeans
 from vMFne.bregman_clustering import softBregmanClustering_vMF, posterior_marginal_vMF_mixture_Ψ
-from vMFne.moVMF import moVMF, posterior_marginal_vMF_mixture_Φ
+from vMFne.moVMF import softMoVMF, posterior_marginal_vMF_mixture_Φ
 from vMFne.negentropy import gradΨ
 import numpy as np
 
@@ -40,8 +40,8 @@ def run_softmovMF(fn, X, K_range, n_repets, max_iter=100, seed=0, verbose=False,
                 ηs = gradΨ(μs, D=D, Ψ0=1e-6)
             else:
                 ηs, w = None, None
-            ηs, w, LL = moVMF(X, K=K, max_iter=max_iter, verbose=False, 
-                              ηs_init=ηs, w_init=w, tie_norms=tie_norms, κ_max=κ_max)
+            ηs, w, LL = softMoVMF(X, K=K, max_iter=max_iter, verbose=False, 
+                                  ηs_init=ηs, w_init=w, tie_norms=tie_norms, κ_max=κ_max)
             all_ηs.append(1. * ηs)
             all_w.append(1. * w)
             all_LL.append(1. * LL)
