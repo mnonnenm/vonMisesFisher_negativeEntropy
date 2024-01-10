@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import pyreadr
 import matplotlib.pyplot as plt
@@ -13,6 +14,7 @@ from vMFne.logpartition import gradΦ
 
 
 def load_classic3(classic300=False, permute_order=True):
+    """ Dataset loader for pre-processed classic3 datasets found online """
 
     np.random.seed(0)
 
@@ -66,6 +68,71 @@ def load_classic3(classic300=False, permute_order=True):
     print('\n')
     
     return X, labels, dictionary
+
+
+def load_classic3_manual(classic300=False, permute_order=True):
+    """ Dataset loader for TF-IDF applied to a copy of the original classic3 dataset """
+
+    np.random.seed(0)
+
+    # all data (3891 abstract) found in 3 large formatted text files
+    # retrieved January 2024 form 
+    # http://ir.dcs.gla.ac.uk/resources/test_collections/cran/
+    # http://ir.dcs.gla.ac.uk/resources/test_collections/cisi/
+    # http://ir.dcs.gla.ac.uk/resources/test_collections/medl/
+    root = 'data/'
+    fns = ['MED.ALL', 'CISI.ALL', 'cran.all.1400']
+
+    data,labels = [], []
+    for i,fn in enumerate(fns):
+        dataset = open(root + fn, "r").read()
+
+        dataset = re.sub(re.compile("\n"), " ", dataset)
+        # use .I (flag for new abstract) to separate the individual documents
+        dataset = re.sub(re.compile("\\.I\s[0-9]+"), "\n ", dataset)
+        vectorizer = CountVectorizer(token_pattern='\n.*')
+        dataset = [string[2:] for string in vectorizer.build_tokenizer()(dataset)]
+        if fn[:4] == 'CISI':
+             # remove extra header
+            dataset = [re.sub(re.compile("\s+\\.T\s"), "", string) for string in dataset]
+            # remove authors
+            dataset = [re.sub(re.compile("\s+\\.A\s.*\s\\.W\s+"), ". ", string) for string in dataset]
+            # remove pre-processing results
+            dataset = [re.sub(re.compile("\s\\.X.*"), "", string) for string in dataset]
+        else: # MED and CRAN
+            # remove header
+            dataset = [re.sub(re.compile(".*\\.W\s+"), "", string) for string in dataset]
+        data += dataset
+        labels = np.concatenate((labels, i * np.ones(len(dataset), dtype=np.int32)))
+
+    tokenizer = CountVectorizer()
+    stopwords = np.loadtxt('data/stoplist_smart.txt', dtype=str).tolist()
+    stopwords = tokenizer.fit(stopwords).get_feature_names_out().tolist()
+
+    # TF-IDF, filtering for features with at least min_df occurences across all documents and 
+    # which occur in at most 15% of all documents.
+    vectorizer = TfidfVectorizer(stop_words=stopwords, min_df=7, max_df=0.15)
+    X = vectorizer.fit_transform(data)
+    dictionary = vectorizer.vocabulary_
+
+    # remove dead documents (i.e. those that don't contain a single word in the current vocabulary)
+    idx = np.where(X.sum(axis=-1)>0.)[0]
+    X, labels = X[idx], labels[idx]
+
+    if classic300: # subsample 100 documents from each class for a total of N=2000
+        idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(20)])
+        X, labels = X[idx], labels[idx]
+
+    N, D = X.shape
+    if permute_order:
+        idx = np.random.permutation(N)
+        X, labels = X[idx], labels[idx]
+
+    print('\n')
+    print('(N,D) = ', (N,D))
+    print('\n')
+
+    return X.astype(np.float32).toarray(), labels, dictionary
 
 
 def run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0):
@@ -122,7 +189,6 @@ def load_news20(subset='all', remove=('headers'), news20_small=False, permute_or
     np.random.seed(0)
 
     tokenizer = CountVectorizer()
-
     stopwords = np.loadtxt('data/stoplist_smart.txt', dtype=str).tolist()
     stopwords = tokenizer.fit(stopwords).get_feature_names_out().tolist()
     data = fetch_20newsgroups(subset=subset, remove=remove)
