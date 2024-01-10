@@ -152,7 +152,7 @@ def load_news20(subset='all', remove=('headers'), news20_small=False, permute_or
     print('(N,D) = ', (N,D))
     print('\n')
 
-    return X, labels, dictionary
+    return X.astype(np.float32).toarray(), labels, dictionary
 
 
 def load_news20_manual(only_train_data=False, news20_small=False, permute_order=True):
