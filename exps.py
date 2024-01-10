@@ -62,12 +62,9 @@ def load_classic3(classic300=False):
     
     return X, labels, dictionary
 
-def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,6,7,8,9,10,11], 
-                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0', 
-                 classic300=False, verbose=False):
 
-    
-    X, labels, dictionary = load_classic3(classic300=classic300)
+def run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0):
+
     N,D = X.shape
     print('N,D', (N,D))
     μ_norm_max = np.linalg.norm(gradΦ(κ_max * np.ones(D)/np.sqrt(D)))
@@ -78,35 +75,41 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
   
     if verbose:
         print('running spherical K-means fits')
-    fn = fn_root + 'spkmeans_10repets_seed_' + str(seed) + '_v' + str(version) + '_'
+    fn = fn_root + 'spkmeans_' + str(n_repets) + 'repets_seed_' + str(seed) + '_v' + str(version) + '_'
     run_spkmeans(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose)
 
 
     if verbose:
         print('running soft moVMF fits')
-    fn = fn_root + 'softmovMF_10repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
+    fn = fn_root + 'softmovMF_' + str(n_repets) + 'repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
     run_softmovMF(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
                       tie_norms=False, κ_max=κ_max, init_with_spkmeans=False)
 
     if verbose:
         print('running soft Bregman Clustering fits')
-    fn = fn_root + 'softBregClust_10repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
+    fn = fn_root + 'softBregClust_' + str(n_repets) + 'repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
     run_softBregmanClustering(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
                       tie_norms=False, μ_norm_max=μ_norm_max, init_with_spkmeans=False, Ψ0=Ψ0)
 
     if verbose:
         print('running soft moVMF fits with tied variances')
-    fn = fn_root + 'softmovMF_10repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
+    fn = fn_root + 'softmovMF_' + str(n_repets) + 'repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
     run_softmovMF(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
                       tie_norms=True, κ_max=κ_max, init_with_spkmeans=False)
 
     if verbose:
         print('running soft Bregman Clustering fits with tied variances')
-    fn = fn_root + 'softBregClust_10repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
+    fn = fn_root + 'softBregClust_' + str(n_repets) + 'repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
     run_softBregmanClustering(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
                       tie_norms=True, μ_norm_max=μ_norm_max, init_with_spkmeans=False, Ψ0=Ψ0)
 
 
+def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,6,7,8,9,10,11],
+                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0',
+                 classic300=False, verbose=False):
+
+    X, labels, dictionary = load_classic3(classic300=classic300)
+    run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
 
 
 def load_news20(only_train_data=False, news20_small=False):
@@ -122,7 +125,7 @@ def load_news20(only_train_data=False, news20_small=False):
     else:
         data_test = np.loadtxt('data/20news_preprocessed/test.data', dtype=int)
         data_test = scipy.sparse.coo_array((data_test[:,2], (data_test[:,0]-1, data_test[:,1]-1))).todense()
-        data_train = np.concatenate([data_train, 
+        data_train = np.concatenate([data_train,
                                      np.zeros((data_train.shape[0], data_test.shape[1]-data_train.shape[1]),dtype=data_train.dtype)],
                                     axis=1)
         data = np.concatenate([data_train, data_test], axis=0)
@@ -161,40 +164,4 @@ def run_all_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20
 
     
     X, labels, dictionary = load_news20(only_train_data=only_train_data, news20_small=news20_small)
-    N,D = X.shape
-    print('N,D', (N,D))
-    μ_norm_max = np.linalg.norm(gradΦ(κ_max * np.ones(D)/np.sqrt(D)))
-
-    if verbose: 
-        print('done loading data.')
-        print('μ_norm_max', μ_norm_max)
-  
-    if verbose:
-        print('running spherical K-means fits')
-    fn = fn_root + 'spkmeans_10repets_seed_' + str(seed) + '_v' + str(version) + '_'
-    run_spkmeans(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose)
-
-
-    if verbose:
-        print('running soft moVMF fits')
-    fn = fn_root + 'softmovMF_10repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
-    run_softmovMF(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
-                      tie_norms=False, κ_max=κ_max, init_with_spkmeans=False)
-
-    if verbose:
-        print('running soft Bregman Clustering fits')
-    fn = fn_root + 'softBregClust_10repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
-    run_softBregmanClustering(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
-                      tie_norms=False, μ_norm_max=μ_norm_max, init_with_spkmeans=False, Ψ0=Ψ0)
-
-    if verbose:
-        print('running soft moVMF fits with tied variances')
-    fn = fn_root + 'softmovMF_10repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
-    run_softmovMF(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
-                      tie_norms=True, κ_max=κ_max, init_with_spkmeans=False)
-
-    if verbose:
-        print('running soft Bregman Clustering fits with tied variances')
-    fn = fn_root + 'softBregClust_10repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
-    run_softBregmanClustering(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
-                      tie_norms=True, μ_norm_max=μ_norm_max, init_with_spkmeans=False, Ψ0=Ψ0)
+    run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)

@@ -73,7 +73,7 @@ def softMoVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False, κ_m
         LL[ii] = logpx.sum()
 
         # M-step:
-        w, ηs = em_M_step_Φ(X, post, κ_max=np.inf, tie_norms=False)
+        w, ηs = em_M_step_Φ(X, post, κ_max=κ_max, tie_norms=tie_norms)
         
         if verbose:
             print(' #' + str(ii+1) + '/' + str(max_iter))
