@@ -133,7 +133,7 @@ def load_news20(subset='all', remove=('headers'), news20_small=False, permute_or
     vectorizer = TfidfVectorizer(stop_words=stopwords, min_df=6, max_df=0.15)
     X = vectorizer.fit_transform(data.data)
 
-    vocabulary = vectorizer.vocabulary_
+    dictionary = vectorizer.vocabulary_
 
     # remove dead documents (i.e. those that don't contain a single word in the current vocabulary)
     idx = np.where(X.sum(axis=-1)>0.)[0]
@@ -204,8 +204,8 @@ def load_news20_manual(only_train_data=False, news20_small=False, permute_order=
 
 def run_all_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20,24,28,32,36,40], 
                  seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0', 
-                 only_train_data=False, news20_small=False, verbose=False):
+                 news20_small=False, verbose=False):
 
     
-    X, labels, dictionary = load_news20(only_train_data=only_train_data, news20_small=news20_small)
+    X, labels, dictionary = load_news20(news20_small=news20_small)
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
