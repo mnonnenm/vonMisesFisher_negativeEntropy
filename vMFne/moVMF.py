@@ -3,7 +3,6 @@ from vMFne.negentropy import gradΨ
 from vMFne.logpartition import vMF_loglikelihood_Φ
 import scipy.special
 
-
 def log_joint_vMF_mixture_Φ(X,w,ηs):
     """
     Log-joint distribution of observed variable X and latent Z for a 
@@ -82,7 +81,7 @@ def em_M_step_Φ(X, post, κ_max=np.inf, tie_norms=False):
     X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     post : N-by-K array_like
-        Posterior p(Z=k | X[n], |μ[1:K], w[1:K]) for all n=1,...,N, k=1,..,K.
+        Posterior p(Z=k | X[n], |η[1:K], w[1:K]) for all n=1,...,N, k=1,..,K.
     κ_max : float, > 0.0
         Maximal permissible L2 norm κ = ||η|| for learned vMF parameters.
         Very large norms can lead to long compute times in the E-step due to
@@ -103,7 +102,7 @@ def em_M_step_Φ(X, post, κ_max=np.inf, tie_norms=False):
 
     w = post.mean(axis=0)
     nalphas = post.sum(axis=0)
-    mus = post.T.dot(X)
+    mus = X.T.dot(post).T # double-transpose for X.dot() in case X is sparse
     mu_norms = np.linalg.norm(mus,axis=1)
     rbar = mu_norms / nalphas
     mus = mus / mu_norms.reshape(-1,1)  # unit-norm 'mean parameter' vectors
@@ -181,7 +180,7 @@ def softMoVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False,
     verbose: bool
         Flag for printing intermediate results.
     tie_norms: bool
-        Flag whether to set all mean-parameter norms ||μ[k]|| to be identical.
+        Flag whether to set all natural-parameter norms ||η[k]|| to be identical.
         Default is False, i.e. each vMF components has its own variance.
     κ_max : float, > 0.0
         Maximal permissible L2 norm κ = ||η|| for learned vMF parameters.
@@ -263,7 +262,7 @@ def hardMoVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False,
     verbose: bool
         Flag for printing intermediate results.
     tie_norms: bool
-        Flag whether to set all mean-parameter norms ||μ[k]|| to be identical.
+        Flag whether to set all natural-parameter norms ||η[k]|| to be identical.
         Default is False, i.e. each vMF components has its own variance.
     κ_max : float, > 0.0
         Maximal permissible L2 norm κ = ||η|| for learned vMF parameters.
