@@ -15,7 +15,7 @@ def vMF_loglikelihood_Ψ(X,μ,D,Ψ0=None):
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     μ : K-by-D array_like
         Collection of K mean parameters for which log p(X|μ) will be computed.
@@ -46,7 +46,7 @@ def log_joint_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     w : K-dim. array_like
         Mixture weights. Must be non-negative and sum to 1.
@@ -84,7 +84,7 @@ def posterior_marginal_vMF_mixture_Ψ(X,w,μs,Ψ0=None):
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     w : K-dim. array_like
         Mixture weights. Must be non-negative and sum to 1.
@@ -118,7 +118,7 @@ def em_M_step_Ψ(X, post, μ_norm_max=0.99, tie_norms=False):
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     post : N-by-K array_like
         Posterior p(Z=k | X[n], |μ[1:K], w[1:K]) for all n=1,...,N, k=1,..,K.
@@ -141,7 +141,7 @@ def em_M_step_Ψ(X, post, μ_norm_max=0.99, tie_norms=False):
     K = post.shape[-1]
 
     w = post.mean(axis=0)
-    μs = post.T.dot(X) / post.sum(axis=0).reshape(K,1)
+    μs = X.T.dot(post).T / post.sum(axis=0).reshape(K,1) # in case X is sparse
     μs_norm = np.linalg.norm(μs,axis=-1)
     if np.any(μs_norm>μ_norm_max):
         idx = μs_norm>μ_norm_max
@@ -159,7 +159,7 @@ def init_EM_Ψ(X, K):
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     K : integer >= 2.
         Number of mixture components.
@@ -199,7 +199,7 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None,
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     K : integer >= 2.
         Number of mixture components.
@@ -288,7 +288,7 @@ def hardBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None,
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     K : integer >= 2.
         Number of mixture components.
@@ -342,7 +342,7 @@ def hardBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None,
 
         # E-step: - compute (hardened) cluster responsibilities
         logpxh = log_joint_vMF_mixture_Ψ(X,w,μs,Ψ0=Ψ0)
-        post = (logpxh >= (np.max(logpxh,axis=1).reshape(-1,1) * np.ones(1,K)))
+        post = (logpxh >= (np.max(logpxh,axis=1).reshape(-1,1) * np.ones((1,K))))
 
         logpx = scipy.special.logsumexp(logpxh,axis=1).reshape(N,1)
         LL[ii] = logpx.sum()
@@ -372,7 +372,7 @@ def spherical_kmeans(X, K, max_iter=100, w_init=None, μs_init=None, verbose=Fal
 
     Parameters
     ----------
-    X : N-by-D array_like
+    X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
     K : integer >= 2.
         Number of mixture components.
