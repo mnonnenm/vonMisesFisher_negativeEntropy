@@ -6,6 +6,10 @@ def vMF_loglikelihood_Ψ(X,μ,D,Ψ0=None):
     """
     Log-likelihood of von Mises-Fisher distribution with mean parameter μ.
 
+    This means that the mixture components p(X | μ[k]) are parameterized by
+    μ[k] = E[x | μ[k]] for vMF-distributed random variable x, simplifying 
+    maximum likelihood from a data matrix X when data is assumed to be iid.
+
     If μ is a K-D array, will return the log-likelihoods of x for all K
     mean parameter vectors μ[k] simultaneously in an N-K matrix.
 
@@ -17,7 +21,7 @@ def vMF_loglikelihood_Ψ(X,μ,D,Ψ0=None):
     ----------
     X : N-by-D array_like or scipy.sparse matrix
         Input matrix with unit-norm data vectors in the rows.
-    μ : K-by-D array_like
+    μs : K-by-D array_like
         Collection of K mean parameters for which log p(X|μ) will be computed.
     D : int
         Dimensionality of hypersphere for von Mises-Fisher distribution.
@@ -38,7 +42,12 @@ def vMF_loglikelihood_Ψ(X,μ,D,Ψ0=None):
 def log_joint_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
     """
     Log-joint distribution of observed variable X and latent Z for a 
-    mixture distribution with K von Mises-Fisher mixture components.
+    mixture distribution with K von Mises-Fisher mixture components in mean
+    parametrization.
+
+    This means that the mixture components p(X | μ[k]) are parameterized by
+    μ[k] = E[x | μ[k]] for vMF-distributed random variable x, simplifying 
+    maximum likelihood from a data matrix X when data is assumed to be iid.
 
     log p(X, Z | μ[1:K], w[1:K]) for latent cluster assignment Z = 1,..,K, 
     where μ_k are the mean parameters of the different mixture components,
@@ -50,7 +59,7 @@ def log_joint_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
         Input matrix with unit-norm data vectors in the rows.
     w : K-dim. array_like
         Mixture weights. Must be non-negative and sum to 1.
-    μ : K-by-D array_like
+    μs : K-by-D array_like
         Collection of K mean parameters for which log p(X|μ) will be computed.
     D : int
         Dimensionality of hypersphere for von Mises-Fisher distribution.
@@ -73,12 +82,16 @@ def log_joint_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
 def posterior_marginal_vMF_mixture_Ψ(X,w,μs,Ψ0=None):
     """
     Posterior distribution of latent Z for observed variable X under a 
-    mixture distribution with K von Mises-Fisher mixture components.
-    Additional returns the (log-)marginal probability of X. 
+    mixture distribution with K von Mises-Fisher mixture components in mean
+    parametrization. Additionally returns the (log-)marginal probability of X. 
+
+    This means that the mixture components p(X | μ[k]) are parameterized by
+    μ[k] = E[x | μ[k]] for vMF-distributed random variable x, simplifying 
+    maximum likelihood from a data matrix X when data is assumed to be iid.
 
     Posterior p(Z|X,μ[1:K],w[1:K]) for latent cluster assignment Z = 1,..,K, 
-    where μ_k are the mean parameters of the different mixture components,
-    and w_k the corresponding mixture weights.
+    where μ[k] are the mean parameters of the different mixture components,
+    and w[k] the corresponding mixture weights.
 
     Log-marginal log p(X | μ[1:K], w[1:K]) summed over all possible latent Z.
 
@@ -88,7 +101,7 @@ def posterior_marginal_vMF_mixture_Ψ(X,w,μs,Ψ0=None):
         Input matrix with unit-norm data vectors in the rows.
     w : K-dim. array_like
         Mixture weights. Must be non-negative and sum to 1.
-    μ : K-by-D array_like
+    μs : K-by-D array_like
         Collection of K mean parameters for which log p(X|μ) will be computed.
     D : int
         Dimensionality of hypersphere for von Mises-Fisher distribution.
@@ -114,7 +127,11 @@ def posterior_marginal_vMF_mixture_Ψ(X,w,μs,Ψ0=None):
 def em_M_step_Ψ(X, post, μ_norm_max=0.99, tie_norms=False):
     """
     M-step of Expectation Maximization algorithm for mixture of 
-    von Mises-Fisher distribution and data X.
+    von Mises-Fisher distribution in mean parametrization, and data X.
+
+    This means that the mixture components p(X | μ[k]) are parameterized by
+    μ[k] = E[x | μ[k]] for vMF-distributed random variable x, simplifying 
+    maximum likelihood from a data matrix X when data is assumed to be iid.
 
     Parameters
     ----------
@@ -134,7 +151,7 @@ def em_M_step_Ψ(X, post, μ_norm_max=0.99, tie_norms=False):
     -------
     w : D-dim. array
         Mixture weights for mixture of vMF distributions. 
-    μ : K-by-D array
+    μs : K-by-D array
         Collection of K mean parameters for K-many vMF mixture components.
 
     """
@@ -156,6 +173,10 @@ def init_EM_Ψ(X, K):
     """
     Computes mixture component mean paramters μ[1:K] to initialize vMF mixture
     model from data X, by using a random partitioning of the N datapoints in X.
+
+    In mean parametriztaion, mixture components p(X | μ[k]) are parameterized
+    by μ[k] = E[x | μ[k]] for vMF-distributed random variable x, simplifying 
+    maximum likelihood from a data matrix X when data is assumed to be iid.
 
     Parameters
     ----------
@@ -276,7 +297,6 @@ def hardBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None,
     In mean parametrization the mixture components p(X | μ[k]) are parameterized
     by μ[k] = E[x | μ[k]] for vMF-distributed random variable x, simplifying 
     maximum likelihood from a data matrix X when data is assumed to be iid.
-
 
     Alternates between Expectation (E-) steps and Maximization (M-) steps.
     In the E-step, latent variables Z[n]=1,..,K are esimtated, which represent 
