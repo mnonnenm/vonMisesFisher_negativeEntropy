@@ -70,7 +70,7 @@ def load_classic3(classic300=False, permute_order=True):
     return X, labels, dictionary
 
 
-def load_classic3_manual(classic300=False, permute_order=True):
+def load_classic3_manual(classic300=False, permute_order=True, sparse_datamatrix=False):
     """ Dataset loader for TF-IDF applied to a copy of the original classic3 dataset """
 
     np.random.seed(0)
@@ -132,7 +132,9 @@ def load_classic3_manual(classic300=False, permute_order=True):
     print('(N,D) = ', (N,D))
     print('\n')
 
-    return X.astype(np.float32).toarray(), labels, dictionary
+    X = X if sparse_datamatrix else X.astype(np.float32).toarray()
+    
+    return X, labels, dictionary
 
 
 def run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0):
@@ -144,7 +146,7 @@ def run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose
     if verbose: 
         print('done loading data.')
         print('μ_norm_max', μ_norm_max)
-  
+
     if verbose:
         print('running spherical K-means fits')
     fn = fn_root + 'spkmeans_' + str(n_repets) + 'repets_seed_' + str(seed) + '_v' + str(version) + '_'
@@ -184,7 +186,7 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
 
 
-def load_news20(subset='all', remove=('headers'), news20_small=False, permute_order=True):
+def load_news20(subset='all', remove=('headers'), news20_small=False, permute_order=True, sparse_datamatrix=False):
 
     np.random.seed(0)
 
@@ -218,7 +220,9 @@ def load_news20(subset='all', remove=('headers'), news20_small=False, permute_or
     print('(N,D) = ', (N,D))
     print('\n')
 
-    return X.astype(np.float32).toarray(), labels, dictionary
+    X = X if sparse_datamatrix else X.astype(np.float32).toarray()
+
+    return X, labels, dictionary
 
 
 def load_news20_manual(only_train_data=False, news20_small=False, permute_order=True):
