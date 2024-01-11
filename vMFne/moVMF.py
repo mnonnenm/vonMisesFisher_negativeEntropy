@@ -103,7 +103,7 @@ def hardMoVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False, κ_m
 
         # E-step: - compute (hardened) cluster responsibilities
         logpxh = log_joint_vMF_mixture_Φ(X=X,w=w,ηs=ηs)
-        post = (logpxh >= (np.max(logpxh,axis=1).reshape(-1,1) * np.ones(1,K)))
+        post = (logpxh >= (np.max(logpxh,axis=1).reshape(-1,1) * np.ones((1,K))))
 
         logpx = scipy.special.logsumexp(logpxh,axis=1).reshape(N,1)
         LL[ii] = logpx.sum()
