@@ -74,7 +74,7 @@ def log_joint_vMF_mixture_Ψ(X,w,μs,Ψ0=0.):
     """
     K,D = μs.shape
 
-    logpxz = np.log(w).reshape(1,K) + vMF_loglikelihood_Ψ(X,μs,D,Ψ0=Ψ0)
+    logpxz = np.log(np.clip(w,1e-15,None)).reshape(1,K) + vMF_loglikelihood_Ψ(X,μs,D,Ψ0=Ψ0)
 
     return logpxz
 

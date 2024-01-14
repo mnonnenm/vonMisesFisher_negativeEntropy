@@ -38,7 +38,7 @@ def Φ(κs, D):
     """
     log_Id = np.array([log_besseli(D/2.-1, κ) for κ in κs])
 
-    return log_Id - (D/2. - 1.) * np.log(κs)
+    return log_Id - (D/2. - 1.) * np.log(np.clip(κs,1e-15,None))
 
 
 def gradΦ(ηs):
