@@ -9,7 +9,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.datasets import fetch_20newsgroups
 
 from vMFne.utils_text import filter_features_against_stopwords, tfn
-from run_exps import run_spkmeans, run_softmovMF, run_softBregmanClustering
+from run_exps import run_spkmeans, run_softmovMF, run_hardmovMF
+from run_exps import run_softBregmanClustering, run_hardBregmanClustering
 from vMFne.logpartition import gradΦ
 
 
@@ -177,6 +178,30 @@ def run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose
     run_softBregmanClustering(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
                       tie_norms=True, μ_norm_max=μ_norm_max, init_with_spkmeans=False, Ψ0=Ψ0)
 
+    if verbose:
+        print('running hard moVMF fits')
+    fn = fn_root + 'hardmovMF_' + str(n_repets) + 'repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
+    run_hardmovMF(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
+                      tie_norms=False, κ_max=κ_max, init_with_spkmeans=False)
+
+    if verbose:
+        print('running hard Bregman Clustering fits')
+    fn = fn_root + 'hardBregClust_' + str(n_repets) + 'repets_seed_' + str(seed) + '_no_tying_' + '_v' + str(version) + '_'
+    run_hardBregmanClustering(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
+                      tie_norms=False, μ_norm_max=μ_norm_max, init_with_spkmeans=False, Ψ0=Ψ0)
+
+    if verbose:
+        print('running hard moVMF fits with tied variances')
+    fn = fn_root + 'hardmovMF_' + str(n_repets) + 'repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
+    run_hardmovMF(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
+                      tie_norms=True, κ_max=κ_max, init_with_spkmeans=False)
+
+    if verbose:
+        print('running hard Bregman Clustering fits with tied variances')
+    fn = fn_root + 'hardBregClust_' + str(n_repets) + 'repets_seed_' + str(seed) + '_with_tying_' + '_v' + str(version) + '_'
+    run_hardBregmanClustering(fn, X, K_range=K_range, n_repets=n_repets, max_iter=max_iter, seed=seed, verbose=verbose, 
+                      tie_norms=True, μ_norm_max=μ_norm_max, init_with_spkmeans=False, Ψ0=Ψ0)
+
 
 def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,6,7,8,9,10,11],
                  seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0',
@@ -184,6 +209,14 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
 
     X, labels, dictionary = load_classic3(classic300=classic300)
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
+
+
+def run_hard_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,6,7,8,9,10,11],
+                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0',
+                 classic300=False, verbose=False):
+
+    X, labels, dictionary = load_classic3(classic300=classic300)
+    run_hard_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
 
 
 def load_news20(subset='all', remove=('headers'), news20_small=False, permute_order=True, sparse_datamatrix=False):
@@ -279,3 +312,12 @@ def run_all_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20
     
     X, labels, dictionary = load_news20(news20_small=news20_small)
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
+
+
+def run_hard_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20,24,28,32,36,40], 
+                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0', 
+                 news20_small=False, verbose=False):
+
+    
+    X, labels, dictionary = load_news20(news20_small=news20_small)
+    run_hard_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
