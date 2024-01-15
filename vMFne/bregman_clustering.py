@@ -169,7 +169,7 @@ def em_M_step_Ψ(X, post, μ_norm_max=0.99, tie_norms=False):
     return w, μs
 
 
-def init_EM_Ψ(X, K):
+def init_EM_Ψ(X, K, uniform_norm=False):
     """
     Computes mixture component mean paramters μ[1:K] to initialize vMF mixture
     model from data X, by using a random partitioning of the N datapoints in X.
@@ -197,6 +197,11 @@ def init_EM_Ψ(X, K):
     for k in range(K-1):
         μs_init[k] = X[idx[k*N//K : (k+1)*N//K]].mean(axis=0)
     μs_init[K-1] = X[idx[(K-1)*N//K:]].mean(axis=0) # last partition may be larger
+    if uniform_norm:
+        # in high-dim. spaces, X[n].T.dot(η)=0 for random η, and then hardMoFM will
+        # assign all X[n] to μ[k] with largest |μ[k]| in the very first round...
+        μs_norm = np.linalg.norm(μs_init,axis=-1)
+        μs_init = μs_init / μs_norm.reshape(-1,1) * μs_norm.mean()
 
     return μs_init
 
@@ -350,7 +355,7 @@ def hardBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None,
     assert np.allclose(w.sum(), 1.)
 
     # initialize clusters on means of random partitioning
-    μs = init_EM_Ψ(X, K) if μs_init is None else μs_init
+    μs = init_EM_Ψ(X, K, uniform_norm=True) if μs_init is None else μs_init
     assert np.all(np.linalg.norm(μs,axis=-1) <= 1.0)
 
     if verbose:

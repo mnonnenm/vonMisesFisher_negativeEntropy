@@ -114,7 +114,7 @@ def em_M_step_Φ(X, post, κ_max=np.inf, tie_norms=False):
     return w, ηs
 
 
-def init_EM_Φ(X, K, Ψ0=None):
+def init_EM_Φ(X, K, uniform_norm=False, Ψ0=None):
     """
     Computes mixture component natural paramters η[1:K] to initialize vMF mixture
     model from data X, by using a random partitioning of the N datapoints in X.
@@ -145,6 +145,11 @@ def init_EM_Φ(X, K, Ψ0=None):
     for k in range(K-1):
         μs_init[k] = X[idx[k*N//K : (k+1)*N//K]].mean(axis=0)
     μs_init[K-1] = X[idx[(K-1)*N//K:]].mean(axis=0) # last partition can be larger
+    if uniform_norm:
+        # in high-dim. spaces, X[n].T.dot(η)=0 for random η, and then hardMoFM will
+        # assign all X[n] to η[k] with largest |η[k]| in the very first round...
+        μs_norm = np.linalg.norm(μs_init,axis=-1)
+        μs_init = μs_init / μs_norm.reshape(-1,1) * μs_norm.mean()
 
     ηs_init = gradΨ(μs_init,D=D,Ψ0=Ψ0)
 
@@ -289,7 +294,8 @@ def hardMoVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False,
     assert np.allclose(w.sum(), 1.)
 
     # initialize clusters on means of random partitioning        
-    ηs = init_EM_Φ(X, K, Ψ0=Ψ0) if ηs_init is None else ηs_init
+    ηs = init_EM_Φ(X, K, Ψ0=Ψ0, uniform_norm=True) if ηs_init is None else ηs_init
+
 
     if verbose:
         print('initial w:', w)
