@@ -213,17 +213,26 @@ def solve_dΨ(μ_norm, D, t0=0., y0=[1e-6], rtol=1e-12, atol=1e-12):
         return vMF_ODE_first_order(t,x,D=D)
 
     if np.ndim(μ_norm) > 0:
-        idx = np.argsort(μ_norm)  # tbd: catch repeats in norm, 
-        μ_norm = (1.*μ_norm[idx]) #      solve_ivp doesn't like those
-        dΨμ = np.empty_like(μ_norm)
-        out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm,
-                                  y0=y0, rtol=rtol, atol=atol)
-        dΨμ[idx] = out.y[0] # vector
+        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
+        if np.any(μ_norm <= t0):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[0]], t_eval=μ_norm[μ_norm <= t0][::-1],
+                                      y0=y0, rtol=rtol, atol=atol)
+            dΨ1 = out.y[0][::-1]
+        else:
+            dΨ1 = []
+        if np.any(t0 < μ_norm):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm[μ_norm > t0],
+                                      y0=y0, rtol=rtol, atol=atol)
+            dΨ2 = out.y[0]
+        else:
+            dΨ2 = []
+        dΨμ = np.concatenate((dΨ1,dΨ2))[idx_inv] #
     else:
-        t_span = [t0, μ_norm] if t0 < μ_norm else [μ_norm, t0]
+        t_span = [t0, μ_norm] if t0 < μ_norm else [t0, t0-μ_norm]
+        f = f_fw if t0 < μ_norm else f_bw
         out = integrate.solve_ivp(f, t_span=t_span,
                                   y0=y0, rtol=rtol, atol=atol)
-        dΨμ =  out.y[0][-1] # scalar
+        dΨμ = out.y[0][-1]
 
     return dΨμ
 
