@@ -52,12 +52,12 @@ def load_classic3(classic300=False, permute_order=True):
         #word_lens = word_lens[idx]
         N, D = X_raw.shape
 
-    X_raw, dictionary = filter_features_against_stopwords(X_raw, dictionary)
-    X, labels = tfn(X_raw, labels, lower=8/N, upper=0.15, dtype=np.float32)
-
     if classic300: # subsample 100 documents from each class for a total of N=300
         idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(3)])
-        X, labels = X[idx], labels[idx]
+        X_raw, labels = X_raw[idx], labels[idx]
+
+    X_raw, dictionary = filter_features_against_stopwords(X_raw, dictionary)
+    X, labels = tfn(X_raw, labels, lower=8/N, upper=0.15, dtype=np.float32)
 
     N, D = X.shape
     if permute_order:
@@ -71,7 +71,7 @@ def load_classic3(classic300=False, permute_order=True):
     return X, labels, dictionary
 
 
-def load_classic3_manual(classic300=False, permute_order=True, sparse_datamatrix=False):
+def load_classic3_manual(classic300=False, permute_order=True, sparse_datamatrix=False, min_df=7, max_df=0.15):
     """ Dataset loader for TF-IDF applied to a copy of the original classic3 dataset """
 
     np.random.seed(0)
@@ -110,19 +110,19 @@ def load_classic3_manual(classic300=False, permute_order=True, sparse_datamatrix
     stopwords = np.loadtxt('data/stoplist_smart.txt', dtype=str).tolist()
     stopwords = tokenizer.fit(stopwords).get_feature_names_out().tolist()
 
+    if classic300: # subsample 100 documents from each class for a total of N=300
+        idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(20)])
+        data, labels = [data[i] fir i in idx], labels[idx]
+
     # TF-IDF, filtering for features with at least min_df occurences across all documents and 
     # which occur in at most 15% of all documents.
-    vectorizer = TfidfVectorizer(stop_words=stopwords, min_df=7, max_df=0.15)
+    vectorizer = TfidfVectorizer(stop_words=stopwords, min_df=min_df, max_df=max_df)
     X = vectorizer.fit_transform(data)
     dictionary = vectorizer.vocabulary_
 
     # remove dead documents (i.e. those that don't contain a single word in the current vocabulary)
     idx = np.where(X.sum(axis=-1)>0.)[0]
     X, labels = X[idx], labels[idx]
-
-    if classic300: # subsample 100 documents from each class for a total of N=2000
-        idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(20)])
-        X, labels = X[idx], labels[idx]
 
     N, D = X.shape
     if permute_order:
@@ -209,15 +209,6 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
 
     X, labels, dictionary = load_classic3(classic300=classic300)
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
-
-
-def run_hard_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,6,7,8,9,10,11],
-                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0',
-                 classic300=False, verbose=False):
-
-    X, labels, dictionary = load_classic3(classic300=classic300)
-    run_hard_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
-
 
 def load_news20(subset='all', remove=('headers'), news20_small=False, permute_order=True, sparse_datamatrix=False):
 
@@ -312,12 +303,3 @@ def run_all_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20
     
     X, labels, dictionary = load_news20(news20_small=news20_small)
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
-
-
-def run_hard_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20,24,28,32,36,40], 
-                 seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0', 
-                 news20_small=False, verbose=False):
-
-    
-    X, labels, dictionary = load_news20(news20_small=news20_small)
-    run_hard_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
