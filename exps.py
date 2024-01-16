@@ -71,7 +71,7 @@ def load_classic3(classic300=False, permute_order=True):
     return X, labels, dictionary
 
 
-def load_classic3_manual(classic300=False, permute_order=True, sparse_datamatrix=False, min_df=7, max_df=0.15):
+def load_classic3_sklearn(classic300=False, permute_order=True, sparse_datamatrix=False, min_df=7, max_df=0.15):
     """ Dataset loader for TF-IDF applied to a copy of the original classic3 dataset """
 
     np.random.seed(0)
@@ -207,10 +207,12 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
                  seed=0, max_iter=100, κ_max=10000., Ψ0=[None, 0.], version='0',
                  classic300=False, verbose=False):
 
-    X, labels, dictionary = load_classic3(classic300=classic300)
+    X, labels, dictionary = load_classic3_sklearn(classic300=classic300)
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
 
-def load_news20(subset='all', remove=('headers'), news20_small=False, permute_order=True, sparse_datamatrix=False):
+
+def load_news20_sklearn(subset='all', remove=('headers'), news20_small=False, 
+                          permute_order=True, sparse_datamatrix=False):
 
     np.random.seed(0)
 
@@ -301,5 +303,5 @@ def run_all_news20(fn_root='results/news20_', n_repets=10, K_range=[4,8,12,16,20
                  news20_small=False, verbose=False):
 
     
-    X, labels, dictionary = load_news20(news20_small=news20_small)
+    X, labels, dictionary = load_news20_sklearn(news20_small=news20_small)
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
