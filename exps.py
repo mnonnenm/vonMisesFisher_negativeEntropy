@@ -13,7 +13,6 @@ from run_exps import run_spkmeans, run_softmovMF, run_hardmovMF
 from run_exps import run_softBregmanClustering, run_hardBregmanClustering
 from vMFne.logpartition import gradΦ
 
-
 def load_classic3(classic300=False, permute_order=True):
     """ Dataset loader for pre-processed classic3 datasets found online """
 
@@ -71,7 +70,8 @@ def load_classic3(classic300=False, permute_order=True):
     return X, labels, dictionary
 
 
-def load_classic3_sklearn(classic300=False, permute_order=True, sparse_datamatrix=False, min_df=7, max_df=0.15):
+def load_classic3_sklearn(classic300=False, seed=0, permute_order=True, 
+                          sparse_datamatrix=False, min_df=7, max_df=0.15):
     """ Dataset loader for TF-IDF applied to a copy of the original classic3 dataset """
 
     np.random.seed(0)
@@ -112,7 +112,7 @@ def load_classic3_sklearn(classic300=False, permute_order=True, sparse_datamatri
 
     if classic300: # subsample 100 documents from each class for a total of N=300
         idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(20)])
-        data, labels = [data[i] fir i in idx], labels[idx]
+        data, labels = [data[i] for i in idx], labels[idx]
 
     # TF-IDF, filtering for features with at least min_df occurences across all documents and 
     # which occur in at most 15% of all documents.
@@ -211,31 +211,36 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
 
 
-def load_news20_sklearn(subset='all', remove=('headers'), news20_small=False, 
+def load_news20_sklearn(subset='all', remove=('headers'), news20_small=False, seed=0,
                           permute_order=True, sparse_datamatrix=False, min_df=6, max_df=0.15):
 
-    np.random.seed(0)
+    np.random.seed(seed)
 
     tokenizer = CountVectorizer()
     stopwords = np.loadtxt('data/stoplist_smart.txt', dtype=str).tolist()
     stopwords = tokenizer.fit(stopwords).get_feature_names_out().tolist()
-    data = fetch_20newsgroups(subset=subset, remove=remove)
-    labels = 1 * data.target
+    news20 = fetch_20newsgroups(subset=subset, remove=remove)
+    labels = 1 * news20.target
+    data = news20.data
+
+    if news20_small: # subsample 100 documents from each class for a total of N=2000
+        # for small dataset, remove the shortest messages first to avoid all-zero TF-ID vectors
+        idx = np.where([len(doc) >= 20 for doc in news20.data])[0]
+        data, labels = [data[i] for i in idx], labels[idx]
+
+        idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(20)])
+        data, labels = [data[i] for i in idx], labels[idx]
 
     # TF-IDF, filtering for features with at least min_df occurences across all documents and 
     # which occur in at most 15% of all documents.
     vectorizer = TfidfVectorizer(stop_words=stopwords, min_df=min_df, max_df=max_df)
-    X = vectorizer.fit_transform(data.data)
+    X = vectorizer.fit_transform(data)
 
     dictionary = vectorizer.vocabulary_
 
     # remove dead documents (i.e. those that don't contain a single word in the current vocabulary)
     idx = np.where(X.sum(axis=-1)>0.)[0]
     X, labels = X[idx], labels[idx]
-
-    if news20_small: # subsample 100 documents from each class for a total of N=2000
-        idx = np.concatenate([np.random.permutation(np.where(labels==k)[0])[:100] for k in range(20)])
-        X, labels = X[idx], labels[idx]
 
     N, D = X.shape
     if permute_order:
