@@ -2,6 +2,7 @@ from scipy import integrate
 from scipy import special as spspecial
 import numpy as np
 
+
 def banerjee_44(rbar,D):
     """
     Approximate Ψ'(||μ||) = Ψ'(rbar) = ||η|| = κ, where Φ is the
@@ -103,242 +104,9 @@ def Ψ_base(μ_norm, D):
     return Ψμ
 
 
-def vMF_ODE_first_order(t, x, D):
-    """ First-order ODE for Ψ''(||μ||) = f(Ψ', ||μ||, D). """
-    return x / ((1 - t**2) * x + (1-D) * t )
-
-
-def vMF_ODE_second_order(t, x, D):
-    """ Second-order ODE for Ψ''(||μ||) = f(Ψ', ||μ||, D). Allows solving for Ψ, Ψ'."""
-    u, v = x
-
-    return [v, v / ((1 - t**2) * v + (1-D) * t )]
-
-
-def solve_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-12):
-    """
-    ODE solver for Ψ(||μ||) and its derivative Ψ'(||μ||), where Ψ is
-    (the radial profile of) the Legendre transform of the log-partition
-    for the von Mises-Fisher distribution in D dimensions.
-
-    Parameters
-    ----------
-    μ_norm : K-dim. array_like
-        L2 norms of mean parameters μ[k], k = 1,...,K.
-    D : integer, >=2
-        Dimensionality of vMF distribution and parameters η and μ.
-    t0 : float, 0.0 <= t0 <= 1.0
-        Starting point for the numerical solver for the radial profile
-        Ψ(||μ||) defined for 0.0 < ||μ|| < 1.0.
-    y0 : tuple or list float or [None, float]
-        Gives [Ψ(t0), Ψ'(t0)]. First entry is computed if provided as None.
-    rtol : float, > 0.0
-        Relative tolerance for ODE solver.
-    atol : float, > 0.0
-        Absolute tolerance for ODE solver.
-
-    Returns
-    -------
-    Ψμ : K-dim. array
-        Numerical approximations to Ψ(μ_norm[k]), k = 1,...,K.
-    dΨμ : K-dim. array
-        Numerical approximations to Ψ'(μ_norm[k]), k = 1,...,K.
-
-    """
-    assert np.all(μ_norm < 1.0)
-    if y0[0] is None:
-        y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
-
-    def f(t, x):
-        return vMF_ODE_second_order(t,x,D=D)
-
-    if np.ndim(μ_norm) > 0:
-        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
-        Ψμ, dΨμ = np.empty_like(μ_norm), np.empty_like(μ_norm)
-        if np.any(μ_norm <= t0):
-            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[0]], t_eval=μ_norm[μ_norm <= t0][::-1],
-                                      y0=y0, rtol=rtol, atol=atol)
-            Ψ1, dΨ1 = out.y[0][::-1], out.y[1][::-1]
-        else:
-            Ψ1, dΨ1 = [], []
-        if np.any(t0 < μ_norm):
-            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm[μ_norm > t0],
-                                      y0=y0, rtol=rtol, atol=atol)
-            Ψ2, dΨ2 = out.y[0], out.y[1]
-        else:
-            Ψ2, dΨ2 = [], []
-        Ψμ = np.concatenate((Ψ1,Ψ2))[idx_inv]  # vectors
-        dΨμ = np.concatenate((dΨ1,dΨ2))[idx_inv] #
-    else:
-        t_span = [t0, μ_norm] if t0 < μ_norm else [t0, t0-μ_norm]
-        f = f_fw if t0 < μ_norm else f_bw
-        out = integrate.solve_ivp(f, t_span=t_span,
-                                  y0=y0, rtol=rtol, atol=atol)
-        Ψμ, dΨμ = out.y[0][-1], out.y[1][-1] # scalars
-        
-    return Ψμ, dΨμ
-
-
-def solve_dΨ(μ_norm, D, t0=0., y0=[1e-6], rtol=1e-12, atol=1e-12):
-    """
-    ODE solver for Ψ'(||μ||), where Ψ is (the radial profile of)
-    the Legendre transform of the log-partition for the
-    von Mises-Fisher distribution in D dimensions.
-
-    Parameters
-    ----------
-    μ_norm : K-dim. array_like
-        L2 norms of mean parameters μ[k], k = 1,...,K.
-    D : integer, >=2
-        Dimensionality of vMF distribution and parameters η and μ.
-    t0 : float, 0.0 <= t0 <= 1.0
-        Starting point for the numerical solver for the radial profile
-        Ψ'||μ||) defined for 0.0 < ||μ|| < 1.0.
-    y0 : float
-        Gives Ψ'(t0).
-    rtol : float, > 0.0
-        Relative tolerance for ODE solver.
-    atol : float, > 0.0
-        Absolute tolerance for ODE solver.
-
-    Returns
-    -------
-    dΨμ : K-dim. array
-        Numerical approximations to Ψ'(μ_norm[k]), k = 1,...,K.
-
-    """
-    assert np.all(μ_norm < 1.0)
-
-    def f(t, x):
-        return vMF_ODE_first_order(t,x,D=D)
-
-    if np.ndim(μ_norm) > 0:
-        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
-        if np.any(μ_norm <= t0):
-            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[0]], t_eval=μ_norm[μ_norm <= t0][::-1],
-                                      y0=y0, rtol=rtol, atol=atol)
-            dΨ1 = out.y[0][::-1]
-        else:
-            dΨ1 = []
-        if np.any(t0 < μ_norm):
-            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm[μ_norm > t0],
-                                      y0=y0, rtol=rtol, atol=atol)
-            dΨ2 = out.y[0]
-        else:
-            dΨ2 = []
-        dΨμ = np.concatenate((dΨ1,dΨ2))[idx_inv] #
-    else:
-        t_span = [t0, μ_norm] if t0 < μ_norm else [t0, t0-μ_norm]
-        f = f_fw if t0 < μ_norm else f_bw
-        out = integrate.solve_ivp(f, t_span=t_span,
-                                  y0=y0, rtol=rtol, atol=atol)
-        dΨμ = out.y[0][-1]
-
-    return dΨμ
-
-
-def vMF_delta_ODE_second_order(t, x, D):
-    """
-    Second-order ODE for Ψ''(||μ||) = f(Ψ', ||μ||, D). Allows solving for Ψ, Ψ'.
-
-    Actially uses a reference approximate solution to Ψ,Ψ' (with known Ψ'') and
-    only represents the *difference* in the right-hand sides of the respective ODEs,
-    meaning this ODE represents an ODE on the differences between the approximate
-    and true solutions to Ψ''(||μ||) = f(Ψ', ||μ||, D).
-
-    """
-    u, v = x   # = Ψ', Ψ''
-    t2 = t**2  # = ||μ||**2 = μ' * μ
-    mt2 = (1.0 - t2)
-    mt22 = mt2**2
-
-    dx = v
-    ddx = 1./mt2 + (1.-D)/mt22*(1.+t2 - t/(0.5*t*(2.-t)+0.08/np.pi*np.sin(np.pi*t)**2+v)) - 1. + t - 0.08*np.sin(2.*np.pi*t)
-
-    return [dx, ddx]
-
-
-def solve_delta_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-12):
-    """
-    ODE solver for Ψ(||μ||) and its derivative Ψ'(||μ||), where Ψ is
-    (the radial profile of) the Legendre transform of the log-partition
-    for the von Mises-Fisher distribution in D dimensions.
-
-    Solves only for the *difference* between the actual ODE solution and a
-    reference approximation to Ψ, Ψ', meaning that for poor ODE solution
-    one can hopefully fall back to the (approximate) reference solution.
-
-    Reference solution builds on the anti-derivative of eq. (4.4) of
-    Banerjee, Arindam, et al.
-    "Clustering on the Unit Hypersphere using von Mises-Fisher Distributions."
-    Journal of Machine Learning Research 6.9 (2005).
-
-    Parameters
-    ----------
-    μ_norm : K-dim. array_like
-        L2 norms of mean parameters μ[k], k = 1,...,K.
-    D : integer, >=2
-        Dimensionality of vMF distribution and parameters η and μ.
-    t0 : float, 0.0 <= t0 <= 1.0
-        Starting point for the numerical solver for the radial profile
-        Ψ(||μ||) defined for 0.0 < ||μ|| < 1.0.
-    y0 : tuple or list float or [None, float]
-        Gives [Ψ(t0), Ψ'(t0)]. First entry is computed if provided as None.
-    rtol : float, > 0.0
-        Relative tolerance for ODE solver.
-    atol : float, > 0.0
-        Absolute tolerance for ODE solver.
-
-    Returns
-    -------
-    Ψμ : K-dim. array
-        Numerical approximations to Ψ(μ_norm[k]), k = 1,...,K.
-    dΨμ : K-dim. array
-        Numerical approximations to Ψ'(μ_norm[k]), k = 1,...,K.
-
-    """
-    assert np.all(μ_norm < 1.0)
-    if y0[0] is None:
-        y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
-
-    if y0[1] == 0:
-        Ψ = y0[0] * np.ones_like(μ_norm)
-        dΨ = np.zeros_like(μ_norm)
-        return Ψ, dΨ
-
-    def f(t, x):
-        return vMF_delta_ODE_second_order(t,x,D=D)
-
-    if np.ndim(μ_norm) > 0:
-        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
-        Ψ, dΨ = np.empty_like(μ_norm), np.empty_like(μ_norm)
-        if np.any(μ_norm <= t0):
-            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[0]], t_eval=μ_norm[μ_norm <= t0][::-1],
-                                      y0=y0, rtol=rtol, atol=atol)
-            Ψ1, dΨ1 = out.y[0][::-1], out.y[1][::-1]
-        else:
-            Ψ1, dΨ1 = [], []
-        if np.any(t0 < μ_norm):
-            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm[μ_norm > t0],
-                                      y0=y0, rtol=rtol, atol=atol)
-            Ψ2, dΨ2 = out.y[0], out.y[1]
-        else:
-            Ψ2, dΨ2 = [], []
-        Ψ = np.concatenate((Ψ1,Ψ2))[idx_inv]  # vectors
-        dΨ = np.concatenate((dΨ1,dΨ2))[idx_inv] #
-    else:
-        t_span = [t0, μ_norm] if t0 < μ_norm else [t0, t0-μ_norm]
-        f = f_fw if t0 < μ_norm else f_bw
-        out = integrate.solve_ivp(f, t_span=t_span,
-                                  y0=y0, rtol=rtol, atol=atol)
-        Ψ, dΨ = out.y[0][-1], out.y[1][-1] # scalars
-
-    return Ψ, dΨ
-
-
 def comp_norm(μ, D):
     """ Compute norms ||μ|| of collection of mean parameters μ. """
-    # could simply replace with np.linalg.norm(μ,axis=1)
+    # could also replace with np.linalg.norm(μ,axis=1)
     assert μ.shape[-1] == D
     μ = μ.reshape(1,D) if μ.ndim == 1 else μ
     assert μ.ndim == 2
@@ -527,6 +295,7 @@ def _hessΨ(ddΨ, dΨ, μ, μ_norm, D):
 
     return hess
 
+
 def DBregΨ(X, μ, D, treat_x_constant=False, Ψ0=None):
     """
     Bregman divergence D_Ψ(x||μ), where Ψ is (the radial profile of)
@@ -564,3 +333,236 @@ def DBregΨ(X, μ, D, treat_x_constant=False, Ψ0=None):
         return dΨdμ_x_μ
     else:
         return dΨdμ_x_μ + Ψ(X, D=D, Ψ0=Ψ0, t0=t0)
+
+
+def vMF_ODE_first_order(t, x, D):
+    """ First-order ODE for Ψ''(||μ||) = f(Ψ', ||μ||, D). """
+    return x / ((1 - t**2) * x + (1-D) * t )
+
+
+def vMF_ODE_second_order(t, x, D):
+    """ Second-order ODE for Ψ''(||μ||) = f(Ψ', ||μ||, D). Allows solving for Ψ, Ψ'."""
+    u, v = x
+
+    return [v, v / ((1 - t**2) * v + (1-D) * t )]
+
+
+def solve_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-12):
+    """
+    ODE solver for Ψ(||μ||) and its derivative Ψ'(||μ||), where Ψ is
+    (the radial profile of) the Legendre transform of the log-partition
+    for the von Mises-Fisher distribution in D dimensions.
+
+    Parameters
+    ----------
+    μ_norm : K-dim. array_like
+        L2 norms of mean parameters μ[k], k = 1,...,K.
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+    t0 : float, 0.0 <= t0 <= 1.0
+        Starting point for the numerical solver for the radial profile
+        Ψ(||μ||) defined for 0.0 < ||μ|| < 1.0.
+    y0 : tuple or list float or [None, float]
+        Gives [Ψ(t0), Ψ'(t0)]. First entry is computed if provided as None.
+    rtol : float, > 0.0
+        Relative tolerance for ODE solver.
+    atol : float, > 0.0
+        Absolute tolerance for ODE solver.
+
+    Returns
+    -------
+    Ψμ : K-dim. array
+        Numerical approximations to Ψ(μ_norm[k]), k = 1,...,K.
+    dΨμ : K-dim. array
+        Numerical approximations to Ψ'(μ_norm[k]), k = 1,...,K.
+
+    """
+    assert np.all(μ_norm < 1.0)
+    if y0[0] is None:
+        y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
+
+    def f(t, x):
+        return vMF_ODE_second_order(t,x,D=D)
+
+    if np.ndim(μ_norm) > 0:
+        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
+        Ψμ, dΨμ = np.empty_like(μ_norm), np.empty_like(μ_norm)
+        if np.any(μ_norm <= t0):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[0]], t_eval=μ_norm[μ_norm <= t0][::-1],
+                                      y0=y0, rtol=rtol, atol=atol)
+            Ψ1, dΨ1 = out.y[0][::-1], out.y[1][::-1]
+        else:
+            Ψ1, dΨ1 = [], []
+        if np.any(t0 < μ_norm):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm[μ_norm > t0],
+                                      y0=y0, rtol=rtol, atol=atol)
+            Ψ2, dΨ2 = out.y[0], out.y[1]
+        else:
+            Ψ2, dΨ2 = [], []
+        Ψμ = np.concatenate((Ψ1,Ψ2))[idx_inv]  # vectors
+        dΨμ = np.concatenate((dΨ1,dΨ2))[idx_inv] #
+    else:
+        t_span = [t0, μ_norm] if t0 < μ_norm else [t0, t0-μ_norm]
+        f = f_fw if t0 < μ_norm else f_bw
+        out = integrate.solve_ivp(f, t_span=t_span,
+                                  y0=y0, rtol=rtol, atol=atol)
+        Ψμ, dΨμ = out.y[0][-1], out.y[1][-1] # scalars
+        
+    return Ψμ, dΨμ
+
+
+def solve_dΨ(μ_norm, D, t0=0., y0=[1e-6], rtol=1e-12, atol=1e-12):
+    """
+    ODE solver for Ψ'(||μ||), where Ψ is (the radial profile of)
+    the Legendre transform of the log-partition for the
+    von Mises-Fisher distribution in D dimensions.
+
+    Parameters
+    ----------
+    μ_norm : K-dim. array_like
+        L2 norms of mean parameters μ[k], k = 1,...,K.
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+    t0 : float, 0.0 <= t0 <= 1.0
+        Starting point for the numerical solver for the radial profile
+        Ψ'||μ||) defined for 0.0 < ||μ|| < 1.0.
+    y0 : float
+        Gives Ψ'(t0).
+    rtol : float, > 0.0
+        Relative tolerance for ODE solver.
+    atol : float, > 0.0
+        Absolute tolerance for ODE solver.
+
+    Returns
+    -------
+    dΨμ : K-dim. array
+        Numerical approximations to Ψ'(μ_norm[k]), k = 1,...,K.
+
+    """
+    assert np.all(μ_norm < 1.0)
+
+    def f(t, x):
+        return vMF_ODE_first_order(t,x,D=D)
+
+    if np.ndim(μ_norm) > 0:
+        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
+        if np.any(μ_norm <= t0):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[0]], t_eval=μ_norm[μ_norm <= t0][::-1],
+                                      y0=y0, rtol=rtol, atol=atol)
+            dΨ1 = out.y[0][::-1]
+        else:
+            dΨ1 = []
+        if np.any(t0 < μ_norm):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm[μ_norm > t0],
+                                      y0=y0, rtol=rtol, atol=atol)
+            dΨ2 = out.y[0]
+        else:
+            dΨ2 = []
+        dΨμ = np.concatenate((dΨ1,dΨ2))[idx_inv] #
+    else:
+        t_span = [t0, μ_norm] if t0 < μ_norm else [t0, t0-μ_norm]
+        f = f_fw if t0 < μ_norm else f_bw
+        out = integrate.solve_ivp(f, t_span=t_span,
+                                  y0=y0, rtol=rtol, atol=atol)
+        dΨμ = out.y[0][-1]
+
+    return dΨμ
+
+
+def vMF_delta_ODE_second_order(t, x, D):
+    """
+    Second-order ODE for Ψ''(||μ||) = f(Ψ', ||μ||, D). Allows solving for Ψ, Ψ'.
+
+    Actually uses a reference approximate solution to Ψ,Ψ' (with known Ψ'') and
+    only represents the *difference* in the right-hand sides of the respective ODEs,
+    meaning this ODE represents an ODE on the differences between the approximate
+    and true solutions to Ψ''(||μ||) = f(Ψ', ||μ||, D).
+
+    """
+    u, v = x   # = Ψ', Ψ''
+    t2 = t**2  # = ||μ||**2 = μ' * μ
+    mt2 = (1.0 - t2)
+    mt22 = mt2**2
+
+    dx = v
+    ddx = 1./mt2 + (1.-D)/mt22*(1.+t2 - t/(0.5*t*(2.-t)+0.08/np.pi*np.sin(np.pi*t)**2+v)) - 1. + t - 0.08*np.sin(2.*np.pi*t)
+
+    return [dx, ddx]
+
+
+def solve_delta_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-12):
+    """
+    ODE solver for Ψ(||μ||) and its derivative Ψ'(||μ||), where Ψ is
+    (the radial profile of) the Legendre transform of the log-partition
+    for the von Mises-Fisher distribution in D dimensions.
+
+    Solves only for the *difference* between the actual ODE solution and a
+    reference approximation to Ψ, Ψ', meaning that for poor ODE solution
+    one can hopefully fall back to the (approximate) reference solution.
+
+    Reference solution builds on the anti-derivative of eq. (4.4) of
+    Banerjee, Arindam, et al.
+    "Clustering on the Unit Hypersphere using von Mises-Fisher Distributions."
+    Journal of Machine Learning Research 6.9 (2005).
+
+    Parameters
+    ----------
+    μ_norm : K-dim. array_like
+        L2 norms of mean parameters μ[k], k = 1,...,K.
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+    t0 : float, 0.0 <= t0 <= 1.0
+        Starting point for the numerical solver for the radial profile
+        Ψ(||μ||) defined for 0.0 < ||μ|| < 1.0.
+    y0 : tuple or list float or [None, float]
+        Gives [Ψ(t0), Ψ'(t0)]. First entry is computed if provided as None.
+    rtol : float, > 0.0
+        Relative tolerance for ODE solver.
+    atol : float, > 0.0
+        Absolute tolerance for ODE solver.
+
+    Returns
+    -------
+    Ψμ : K-dim. array
+        Numerical approximations to Ψ(μ_norm[k]), k = 1,...,K.
+    dΨμ : K-dim. array
+        Numerical approximations to Ψ'(μ_norm[k]), k = 1,...,K.
+
+    """
+    assert np.all(μ_norm < 1.0)
+    if y0[0] is None:
+        y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
+
+    if y0[1] == 0:
+        Ψ = y0[0] * np.ones_like(μ_norm)
+        dΨ = np.zeros_like(μ_norm)
+        return Ψ, dΨ
+
+    def f(t, x):
+        return vMF_delta_ODE_second_order(t,x,D=D)
+
+    if np.ndim(μ_norm) > 0:
+        μ_norm, idx, idx_inv = np.unique(μ_norm, return_index=True, return_inverse=True)
+        Ψ, dΨ = np.empty_like(μ_norm), np.empty_like(μ_norm)
+        if np.any(μ_norm <= t0):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[0]], t_eval=μ_norm[μ_norm <= t0][::-1],
+                                      y0=y0, rtol=rtol, atol=atol)
+            Ψ1, dΨ1 = out.y[0][::-1], out.y[1][::-1]
+        else:
+            Ψ1, dΨ1 = [], []
+        if np.any(t0 < μ_norm):
+            out = integrate.solve_ivp(f, t_span=[t0, μ_norm[-1]], t_eval=μ_norm[μ_norm > t0],
+                                      y0=y0, rtol=rtol, atol=atol)
+            Ψ2, dΨ2 = out.y[0], out.y[1]
+        else:
+            Ψ2, dΨ2 = [], []
+        Ψ = np.concatenate((Ψ1,Ψ2))[idx_inv]  # vectors
+        dΨ = np.concatenate((dΨ1,dΨ2))[idx_inv] #
+    else:
+        t_span = [t0, μ_norm] if t0 < μ_norm else [t0, t0-μ_norm]
+        f = f_fw if t0 < μ_norm else f_bw
+        out = integrate.solve_ivp(f, t_span=t_span,
+                                  y0=y0, rtol=rtol, atol=atol)
+        Ψ, dΨ = out.y[0][-1], out.y[1][-1] # scalars
+
+    return Ψ, dΨ
