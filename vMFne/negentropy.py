@@ -30,8 +30,35 @@ def banerjee_44(rbar,D):
     """
     return rbar * (D-rbar**2) / (1-rbar**2)
 
+def dΨ_base(μ_norm, D, mode='ODE_refined'):
+    """
+    Approximate Ψ'(||μ||) = Ψ'(μ_norm) = ||η|| = κ, where Φ is the
+    log-partition of the von Mises-Fisher distribution in D dimensions, Ψ is
+    its Legendre transform, η the natural parameter, μ the mean parameter
+    and Ψ(||μ||) the radial profile of the radially symmetric function Ψ.
 
-def dΨ_base(μ_norm, D):
+    Parameters
+    ----------
+    μ_norm : K-dim. array_like
+        L2 norms of mean parameters μ[k], k = 1,...,K.
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+    mode: string
+        Optional argument to select method of approximation.
+    Returns
+    -------
+    κs : K-dim. array
+        Numerical approximations to κs[k] = Ψ'(μ_norm[k]), k = 1,...,K.
+
+    """
+    assert mode in ['B44', 'ODE_refined']
+    if mode=='B44':
+        return dΨbase_Banerjee_plus(μ_norm, D)
+    elif mode=='ODE_refined':
+        return dΨbase_ODE_refined(μ_norm, D)
+
+
+def dΨbase_Banerjee_plus(μ_norm, D):
     """
     Approximate Ψ'(||μ||) = Ψ'(μ_norm) = ||η|| = κ, where Φ is the
     log-partition of the von Mises-Fisher distribution in D dimensions, Ψ is
@@ -66,8 +93,68 @@ def dΨ_base(μ_norm, D):
 
     return dΨ
 
+def dΨbase_ODE_refined(μ_norm, D):
+    """
+    Approximate Ψ'(||μ||) = Ψ'(μ_norm) = ||η|| = κ, where Φ is the
+    log-partition of the von Mises-Fisher distribution in D dimensions, Ψ is
+    its Legendre transform, η the natural parameter, μ the mean parameter
+    and Ψ(||μ||) the radial profile of the radially symmetric function Ψ.
 
-def Ψ_base(μ_norm, D):
+    Builds on eq. (4.4) of
+    Banerjee, Arindam, et al.
+    "Clustering on the Unit Hypersphere using von Mises-Fisher Distributions."
+    Journal of Machine Learning Research 6.9 (2005).
+
+    Results from plugging an estimate for Ψ'' into the second-order ODE, 
+    Ψ'(||μ||) = (D-1) ||μ|| / ( 1 -  ||μ||^2 - 1/Ψ''(||μ||)  )
+    Here we take the estimate Ψ'' from the derivative of eq. (4.4).
+
+    Parameters
+    ----------
+    μ_norm : K-dim. array_like
+        L2 norms of mean parameters μ[k], k = 1,...,K.
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+
+    Returns
+    -------
+    κs : K-dim. array
+        Numerical approximations to κs[k] = Ψ'(μ_norm[k]), k = 1,...,K.
+
+    """
+
+    return (D-1.)*( μ_norm/(1.-μ_norm**2) + μ_norm/(μ_norm**4+(D-2.)*μ_norm**2+D-1.) )
+
+
+def Ψ_base(μ_norm, D, mode='ODE_refined'):
+    """
+    Approximate Ψ(||μ||), where Ψ is the Legendre transform of the log-partition
+    for the von Mises-Fisher distribution in D dimensions.
+
+    Parameters
+    ----------
+    μ_norm : K-dim. array_like
+        L2 norms of mean parameters μ[k], k = 1,...,K.
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+    mode: string
+        Optional argument to select method of approximation.
+
+    Returns
+    -------
+    Ψμ : K-dim. array
+        Numerical approximations to Ψ(μ_norm[k]), k = 1,...,K.
+
+    """
+    assert mode in ['B44', 'ODE_refined']
+    if mode=='B44':
+        return Ψbase_Banerjee_plus(μ_norm, D)
+    elif mode=='ODE_refined':
+        return Ψbase_ODE_refined(μ_norm, D)
+
+
+
+def Ψbase_Banerjee_plus(μ_norm, D):
     """
     Approximate Ψ(||μ||), where Ψ is the Legendre transform of the log-partition
     for the von Mises-Fisher distribution in D dimensions.
@@ -103,6 +190,41 @@ def Ψ_base(μ_norm, D):
 
     return Ψμ
 
+
+def Ψbase_ODE_refined(μ_norm, D):
+    """
+    Approximate Ψ(||μ||), where Ψ is the Legendre transform of the log-partition
+    for the von Mises-Fisher distribution in D dimensions.
+
+    Builds on eq. (4.4) of
+    Banerjee, Arindam, et al.
+    "Clustering on the Unit Hypersphere using von Mises-Fisher Distributions."
+    Journal of Machine Learning Research 6.9 (2005).
+
+    Results from plugging an estimate for Ψ'' into the second-order ODE, 
+    Ψ'(||μ||) = (D-1) ||μ|| / ( 1 -  ||μ||^2 - 1/Ψ''(||μ||)  )
+    Here we take the estimate Ψ'' from the derivative of eq. (4.4).
+
+    We then find the analytical antriderivative of the resulting Ψ'(||μ||).
+
+    Parameters
+    ----------
+    μ_norm : K-dim. array_like
+        L2 norms of mean parameters μ[k], k = 1,...,K.
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+
+    Returns
+    -------
+    Ψμ : K-dim. array
+        Numerical approximations to Ψ(μ_norm[k]), k = 1,...,K.
+
+    """
+    sqrt, v, μ_norm2 = np.sqrt(D**2/4. - 2.*D + 2.), D/2. - 1., μ_norm**2
+    log1 = np.log(v + μ_norm2 - sqrt) 
+    log2 = np.log(v + μ_norm2 + sqrt)
+    offset = np.log(v+sqrt) - np.log(v-sqrt)
+    return (D-1.) * ((log1 - log2 + offset)/(4.*sqrt) - 0.5 * np.log(1.-μ_norm2))
 
 def comp_norm(μ, D):
     """ Compute norms ||μ|| of collection of mean parameters μ. """
@@ -162,12 +284,16 @@ def Ψ(μ, D, Ψ0=None, t0=0., return_grad=False, solve_delta=True):
     μ_norm = comp_norm(μ, D=D)
     y0 = [Ψ0, 1e-6] if np.ndim(Ψ0)==0 else Ψ0 
     assert len(y0) == 2
-    if solve_delta:
-        Ψμ, dΨμ = solve_delta_Ψ_dΨ(μ_norm, D=D, y0=y0, t0=t0)
-        dΨμ = dΨμ + dΨ_base(μ_norm, D=D)
-        Ψμ = Ψμ + Ψ_base(μ_norm, D=D)
+    if Ψ0[1] > 0:
+        if solve_delta:
+            Ψμ, dΨμ = solve_delta_Ψ_dΨ(μ_norm, D=D, y0=y0, t0=t0)
+            dΨμ = dΨμ + dΨ_base(μ_norm, D=D, mode='B44')
+            Ψμ = Ψμ + Ψ_base(μ_norm, D=D, mode='B44')
+        else:
+            Ψμ, dΨμ = solve_Ψ_dΨ(μ_norm, D=D, y0=y0, t0=t0)
     else:
-        Ψμ, dΨμ = solve_Ψ_dΨ(μ_norm, D=D, y0=y0, t0=t0)
+        Ψμ =  Ψ_base(μ_norm, D=D, mode='ODE_refined')
+        dΨμ = dΨ_base(μ_norm, D=D, mode='ODE_refined') if return_grad else None
 
     if return_grad:
         return Ψμ, _gradΨ(dΨμ, μ, μ_norm, D=D)
