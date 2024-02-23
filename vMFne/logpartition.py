@@ -215,8 +215,8 @@ def invgradΦ(μs_norm,D,max_iter=10, atol=1e-12):
     function Φ of the D-dimensional von Mises-Fisher distribution.
 
     Uses Newton-Rapshon on ||∇Φ(η)|| = μs_norm to find ||η|| = κ.
-    Since the vMF log-partition is radially symmetric, κ often
-    is the only non-trivial of η to figure out.
+    Since the vMF log-partition is radially symmetric, κ is the 
+    only non-trivial aspect of natural parmeter η to figure out.
 
     Parameters
     ----------
@@ -241,5 +241,91 @@ def invgradΦ(μs_norm,D,max_iter=10, atol=1e-12):
     κs_est_44 = banerjee_44(rbar,D) # initial guess for κs
     κs_est, diffs = newtonraphson(κs_init=κs_est_44, D=D, rbar=rbar, 
                                   max_iter=max_iter, atol=atol)
-
     return κs_est, diffs
+
+
+def invgradΦ_base(μs_norm,D, order=2, K=20):
+    """
+    Numerical inversion of the gradient of the log-partition
+    function Φ of the D-dimensional von Mises-Fisher distribution.
+
+    Uses truncated Newton-Rapshon on ||∇Φ(η)|| = μs_norm to find 
+    ||η|| = κ. Since the vMF log-partition is radially symmetric, 
+    κ is the only aspect of natural parmeter η to figure out.
+    
+    Approximates ||∇Φ(η)|| = f(||η||) using the Perron continuous
+    fraction representation. 
+
+    Parameters
+    ----------
+    μs_norm : K-dim. array_like
+        L2 norms of mean parameters μs_norm = ||μ||.
+    D : integer, >=2
+        Dimension of the natural parameter η and vMF distribution.
+    order : non-negative integer
+        Number of Newton-Rapshon iterations.
+    K : non-negative integer
+        Number of iterations to numerically approximate ||∇Φ(η)||.
+
+    Returns
+    -------
+    κs_est : K-dim. array
+        Approximate solutions of ||η|| for which ||∇Φ(η)||=μs_norm.
+
+    """
+    κs_est = truncated_newtonraphson_perron(μs_norm,D,order,K)
+    return κs_est
+
+
+def perron_cf_rec(u,v,w,ρ,x,xp,s,k):
+    if k==1:
+        v = s + x + 0.5
+        u = (s + x) * v
+        w = xp * (s + 0.5)
+        ρ = w / ((s+xp) * v - w)
+    else:
+        u = u + v
+        v = v + 0.5
+        w = w + xp
+        t = w * (1. + ρ)
+        ρ = t / (u - t)
+    return u,v,w,ρ
+
+
+def A_perron_cf(x,D,K):
+    A = np.empty_like(x)
+    idx = (x >= 1e-6)
+    s = D/2.
+    xp = 0.5 * x[idx]
+    p,psum = 1.0, 1.0
+    u,v,w,ρ = None, None, None, None
+    k = 1
+    not_converged = True
+    while not_converged:
+        u,v,w,ρ = perron_cf_rec(u,v,w,ρ,x[idx],xp,s,k)
+        p = ρ * p
+        psum = psum + p 
+        k = k+1
+        not_converged = k < K
+
+    A[idx] = psum / (1. + 2. * s/x[idx])
+    nidx = np.invert(idx)
+    if np.any(nidx):
+        A[nidx] = x[nidx] / D - x[nidx]**3 / (D**2 * (D + 2)) + 2. * x[nidx]**5 / (D**3 * (D + 2) * (D + 4))
+    return A
+
+
+def truncated_newtonraphson_perron(rbar,D,order=2,K=5):
+    κ = banerjee_44(rbar,D)
+    for order in range(order):
+        Aκ = A_perron_cf(κ,D,K=K)
+        f = Aκ - rbar
+        df = 1. - Aκ**2 - (D-1) * Aκ/κ
+        ddf = 2. * Aκ**3 + 3. * (D-1) * Aκ**2/κ + (D*(D-1)/κ**2 - 2.0) * Aκ - (D-1)/κ
+        κ = κ - 2. * f * df / (2. * df**2 - f * ddf)
+    return κ
+
+
+def logbesseli_hornik(v,x):
+    x2v12 = np.sqrt(x**2 + (v+1)**2)
+    return x2v12 + (v+0.5)*np.log((2.0*v+1.5)*x/((v+0.5+x2v12)*(2.0*v+2.0))) - np.log(x/2.)/2. - np.log(2.0*np.pi)/2

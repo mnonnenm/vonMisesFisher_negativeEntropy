@@ -1,6 +1,6 @@
 import numpy as np
 from vMFne.negentropy import Ψ
-from vMFne.logpartition import vMF_loglikelihood_Φ
+from vMFne.logpartition import vMF_loglikelihood_Φ, invgradΦ_base
 import scipy.special
 
 def log_joint_vMF_mixture_Φ(X,w,ηs):
@@ -106,7 +106,8 @@ def em_M_step_Φ(X, post, κ_max=np.inf, tie_norms=False):
     mu_norms = np.linalg.norm(mus,axis=1)
     rbar = mu_norms / nalphas
     mus = mus / mu_norms.reshape(-1,1)  # unit-norm 'mean parameter' vectors
-    κs = np.minimum(rbar * (D - rbar**2) / (1 - rbar**2), κ_max)
+    κs_est = invgradΦ_base(rbar, D, order=2, K=50)
+    κs = np.minimum(κs_est, κ_max)
     if tie_norms:
         κs = κs.mean() * np.ones_like(κs)
     ηs = mus * κs.reshape(-1,1)
