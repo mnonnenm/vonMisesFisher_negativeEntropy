@@ -93,7 +93,7 @@ def dΨbase_Banerjee_plus(μ_norm, D):
 
     return dΨ
 
-def dΨbase_ODE_refined(μ_norm, D):
+def dΨbase_ODE_refined(μ_norm, D, order=2):
     """
     Approximate Ψ'(||μ||) = Ψ'(μ_norm) = ||η|| = κ, where Φ is the
     log-partition of the von Mises-Fisher distribution in D dimensions, Ψ is
@@ -122,8 +122,14 @@ def dΨbase_ODE_refined(μ_norm, D):
         Numerical approximations to κs[k] = Ψ'(μ_norm[k]), k = 1,...,K.
 
     """
-
-    return (D-1.)*( μ_norm/(1.-μ_norm**2) + μ_norm/(μ_norm**4+(D-2.)*μ_norm**2+D-1.) )
+    assert order in [0,1,2]
+    if order==0:
+        return
+    if order==1:
+        return (D-1.)*( μ_norm/(1.-μ_norm**2) + μ_norm/(μ_norm**4+(D-2.)*μ_norm**2+D-1.) )
+    if order==2:
+        dpsidmu2_est = (D-1) * ((2*μ_norm**2)/(1 - μ_norm**2)**2 + 1/(1 - μ_norm**2) - (μ_norm* (2 *(D-2) * μ_norm + 4 * μ_norm**3))/(D-1 + (D-2) * μ_norm**2 + μ_norm**4)**2 + 1/(D-1 + (D-2) * μ_norm**2 + μ_norm**4)) #derivative of order==1
+        return (D-1)*μ_norm/(1 - μ_norm**2 - 1/dpsidmu2_est)
 
 
 def Ψ_base(μ_norm, D, mode='ODE_refined'):
