@@ -274,6 +274,7 @@ def softBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None,
         print('initial ||μs||:', np.linalg.norm(μs,axis=-1))
 
     LL = np.zeros(max_iter) # likelihood (up to multiplicative constant)
+    ii = 0
     for ii in range(max_iter):
 
         # E-step: - compute cluster responsibilities
@@ -363,6 +364,7 @@ def hardBregmanClustering_vMF(X, K, max_iter=100, w_init=None, μs_init=None,
         print('initial ||μs||:', np.linalg.norm(μs,axis=-1))
 
     LL = np.zeros(max_iter) # likelihood (up to multiplicative constant)
+    ii = 0
     for ii in range(max_iter):
 
         # E-step: - compute (hardened) cluster responsibilities
@@ -435,6 +437,7 @@ def spherical_kmeans(X, K, max_iter=100, w_init=None, μs_init=None, verbose=Fal
     if verbose:
         print('initial w:', w)
 
+    ii = 0
     for ii in range(max_iter):
 
         # 'E-step' - compute cluster assignments via cosine similarity

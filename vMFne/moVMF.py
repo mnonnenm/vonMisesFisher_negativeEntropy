@@ -1,5 +1,5 @@
 import numpy as np
-from vMFne.negentropy import gradΨ
+from vMFne.negentropy import Ψ
 from vMFne.logpartition import vMF_loglikelihood_Φ
 import scipy.special
 
@@ -151,7 +151,7 @@ def init_EM_Φ(X, K, uniform_norm=False, Ψ0=None):
         μs_norm = np.linalg.norm(μs_init,axis=-1)
         μs_init = μs_init / μs_norm.reshape(-1,1) * μs_norm.mean()
 
-    ηs_init = gradΨ(μs_init,D=D,Ψ0=Ψ0)
+    _, ηs_init = Ψ(μs_init,D=D,Ψ0=[0., 0.], return_grad=True)
 
     return ηs_init
 
@@ -218,6 +218,7 @@ def softMoVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False,
         print('inital kappa:', np.linalg.norm(ηs,axis=-1))
 
     LL = np.zeros(max_iter) # likelihood (up to multiplicative constant)
+    ii = 0
     for ii in range(max_iter):
 
         # E-step: - compute cluster responsibilities
@@ -302,6 +303,7 @@ def hardMoVMF(X, K, max_iter=50, w_init=None, ηs_init=None, verbose=False,
         print('inital kappa:', np.linalg.norm(ηs,axis=-1))
 
     LL = np.zeros(max_iter) # likelihood (up to multiplicative constant)
+    ii = 0
     for ii in range(max_iter):
 
         # E-step: - compute (hardened) cluster responsibilities
