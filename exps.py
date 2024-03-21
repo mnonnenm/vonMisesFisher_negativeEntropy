@@ -211,7 +211,7 @@ def run_all_classic3(fn_root='results/classic3_', n_repets=10, K_range=[2,3,4,5,
     run_all_algs(fn_root, version, X, K_range, n_repets, max_iter, seed, verbose, κ_max, Ψ0)
 
 
-def load_news20_sklearn(subset='all', remove=('headers'), news20_small=False, seed=0,
+def load_news20_sklearn(subset='all', remove=('headers',), news20_small=False, seed=0,
                           permute_order=True, sparse_datamatrix=False, min_df=6, max_df=0.15):
 
     np.random.seed(seed)
