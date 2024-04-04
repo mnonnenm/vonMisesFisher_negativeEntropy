@@ -24,7 +24,7 @@ $\Phi(\eta) = \Phi(||\eta||) = \log I_{D/2−1}(||\eta||) − (D/2 − 1) \log |
 
 As a natural exponential family with strictly convex log-partition function, the vMF family of distributions can equivalently be written as 
 
-$\log p(x|\mu) = \nabla{}\Psi(\mu)^\top{}(x - \mu) + \Psi(\mu) - \log h(x)$
+$\log p(x|\mu) = \nabla{}\Psi(\mu)^\top{}(x - \mu) + \Psi(\mu) + \log h(x)$
 
 with 'negative entropy' function 
 
