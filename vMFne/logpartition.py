@@ -38,7 +38,7 @@ def Φ(κs, D):
     """
     log_Id = np.array([log_besseli(D/2.-1, κ) for κ in κs])
 
-    return log_Id - (D/2. - 1.) * np.log(np.clip(κs,1e-15,None))
+    return log_Id - (D/2. - 1.) * np.log(np.clip(κs,1e-15,None)) + logχ(D)
 
 
 def gradΦ(ηs):
@@ -56,7 +56,7 @@ def logχ(D) :
     return - D/2. * np.log(2*np.pi)
 
 
-def vMF_loglikelihood_Φ(X,ηs,incl_const=True):
+def vMF_loglikelihood_Φ(X,ηs):
     """
     Log-likelihood of von Mises-Fisher distribution with natural parameter η.
 
@@ -72,8 +72,6 @@ def vMF_loglikelihood_Φ(X,ηs,incl_const=True):
         Input matrix with unit-norm data vectors in the rows.
     ηs : K-by-D array_like
         Collection of K natural parameters for which log p(X|η) will be computed.
-    incl_const: bool
-        Flag whether to compute the (constant) base measure χ(D) for dimension D.
 
     Returns
     -------
@@ -86,8 +84,6 @@ def vMF_loglikelihood_Φ(X,ηs,incl_const=True):
     K,D = ηs.shape 
     κs = np.linalg.norm(ηs,axis=-1)
     LL = X.dot(ηs.T) - Φ(κs, D).reshape(1,K)
-    if incl_const:
-        LL = LL + logχ(D)
 
     return LL
 
@@ -113,7 +109,7 @@ def vMF_entropy_Φ(ηs):
     ηs = np.atleast_2d(ηs)
     K,D = ηs.shape
     κs = np.linalg.norm(ηs,axis=-1)    
-    H = Φ(κs, D) - logχ(D) - κs * A(κs,D)
+    H = Φ(κs, D) - κs * A(κs,D)
 
     return H
 

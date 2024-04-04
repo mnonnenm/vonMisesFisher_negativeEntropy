@@ -132,6 +132,25 @@ def dΨbase_ODE_refined(μ_norm, D, order=2):
         return (D-1)*μ_norm/(1 - μ_norm**2 - 1/dpsidmu2_est)
 
 
+def Ψ_0(D):
+    """
+    Negative entropy Ψ(0), i.e. at origin μ=0, where Ψ is the Legendre transform of
+    the log-partition for the von Mises-Fisher distribution in D dimensions.
+
+    Parameters
+    ----------
+    D : integer, >=2
+        Dimensionality of vMF distribution and parameters η and μ.
+
+    Returns
+    -------
+    Ψ0 : D-like array
+        Ψ(0) for all dimensions in input D
+
+    """
+    return (D/2. - 1. ) * np.log( 2. ) + spspecial.loggamma( D/2. )  + D/2. * np.log(2. * np.pi)
+
+
 def Ψ_base(μ_norm, D, mode='ODE_refined'):
     """
     Approximate Ψ(||μ||), where Ψ is the Legendre transform of the log-partition
@@ -153,10 +172,11 @@ def Ψ_base(μ_norm, D, mode='ODE_refined'):
 
     """
     assert mode in ['B44', 'ODE_refined']
+    Ψ0 = Ψ_0(D)
     if mode=='B44':
-        return Ψbase_Banerjee_plus(μ_norm, D)
+        return Ψ0 + Ψbase_Banerjee_plus(μ_norm, D)
     elif mode=='ODE_refined':
-        return Ψbase_ODE_refined(μ_norm, D)
+        return Ψ0 + Ψbase_ODE_refined(μ_norm, D)
 
 
 
@@ -511,7 +531,8 @@ def solve_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-12):
     """
     assert np.all(μ_norm < 1.0)
     if y0[0] is None:
-        y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
+        y0 = y0.copy()
+        y0[0] = Ψ_0(D)
 
     def f(t, x):
         return vMF_ODE_second_order(t,x,D=D)
@@ -663,7 +684,8 @@ def solve_delta_Ψ_dΨ(μ_norm, D, t0=0., y0=[None, 1e-6], rtol=1e-12, atol=1e-1
     """
     assert np.all(μ_norm < 1.0)
     if y0[0] is None:
-        y0[0] = (D/2-1) * np.log(2) + spspecial.loggamma(D/2) # Ψ(0) = - Φ(0)
+        y0 = y0.copy()
+        y0[0] = 0. # Ψ(0) will be added by Ψ_base !
 
     if y0[1] == 0:
         Ψ = y0[0] * np.ones_like(μ_norm)

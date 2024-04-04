@@ -30,7 +30,7 @@ def log_joint_vMF_mixture_Φ(X,w,ηs):
     """
     K = ηs.shape[0]
 
-    logpxz = np.log(np.clip(w,1e-15,None)).reshape(1,K) + vMF_loglikelihood_Φ(X,ηs,incl_const=False)
+    logpxz = np.log(np.clip(w,1e-15,None)).reshape(1,K) + vMF_loglikelihood_Φ(X,ηs)
 
     return logpxz
 
