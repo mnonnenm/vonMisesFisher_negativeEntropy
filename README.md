@@ -16,11 +16,11 @@ The [experiments notebook](https://github.com/vmf-negentropy/vmf-negentropy/blob
 
 The von Mises-Fisher distribution vMF($m, \kappa)$ in D dimensions is a natural exponential family 
 
-$\log p(x|\eta) = \eta^\top{}x - \Phi(\eta) - \log h(x) $
+$\log p(x|\eta) = \eta^\top{}x - \Phi(\eta) + \log h(x) $
 
 with base measure $h(x)$ uniform over the hypersphere $S^{D-1}$, natural parameter $\eta = \kappa m$ and log-partition function
 
-$\Phi(\eta) = \Phi(||\eta||) = \log I_{D/2−1}(||\eta||) − (D/2 − 1) \log ||\eta||.$
+$\Phi(\eta) = \Phi(||\eta||) = \log I_{D/2−1}(||\eta||) − (D/2 − 1) \log ||\eta|| + const.$
 
 As a natural exponential family with strictly convex log-partition function, the vMF family of distributions can equivalently be written as 
 
