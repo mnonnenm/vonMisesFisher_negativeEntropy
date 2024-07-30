@@ -1,6 +1,6 @@
 Code repository for the study
 
-"A solution for the mean parametrization of the von Mises-Fisher distribution"
+[A solution for the mean parametrization of the von Mises-Fisher distribution](https://arxiv.org/abs/2404.07358).
 
 ## Contents
 
